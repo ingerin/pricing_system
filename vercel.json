@@ -1,12 +1,11 @@
 {
   "builds": [
     {
-      "src": "vercel_wsgi.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "static/**",
-      "use": "@vercel/static"
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": {
+        "runtime": "python3.9"
+      }
     }
   ],
   "routes": [
@@ -16,13 +15,9 @@
     },
     {
       "src": "/(.*)",
-      "dest": "vercel_wsgi.py"
+      "dest": "api/index.py"
     }
   ],
-  "env": {
-    "PYTHONPATH": "/vercel/path0",
-    "DJANGO_SETTINGS_MODULE": "config.vercel_settings"
-  },
-  "buildCommand": "bash vercel_build.sh",
-  "outputDirectory": "public"
+  "buildCommand": "powershell -File build.ps1",
+  "installCommand": "pip install -r requirements.txt"
 }

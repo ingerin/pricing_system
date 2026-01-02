@@ -9,7 +9,7 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Секретный ключ
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-vercel-key-12345')
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-' + 'a'*50)
 
 # Режим отладки
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
@@ -22,9 +22,11 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
 ]
 
-# Если есть кастомный домен, добавьте его
+# Добавляем домен Vercel если есть
 if 'VERCEL_URL' in os.environ:
     ALLOWED_HOSTS.append(os.environ['VERCEL_URL'])
+if 'VERCEL_BRANCH_URL' in os.environ:
+    ALLOWED_HOSTS.append(os.environ['VERCEL_BRANCH_URL'])
 
 # Приложения
 INSTALLED_APPS = [
@@ -40,7 +42,7 @@ INSTALLED_APPS = [
 # Middleware
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # Для статических файлов
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -49,21 +51,21 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-# Настройки базы данных
+# База данных
 if os.environ.get('DATABASE_URL'):
     DATABASES = {
         'default': dj_database_url.config(
             default=os.environ.get('DATABASE_URL'),
             conn_max_age=600,
-            conn_health_checks=True,
+            ssl_require=True
         )
     }
 else:
-    # Используем SQLite локально
+    # Используем SQLite в /tmp для Vercel
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'NAME': '/tmp/db.sqlite3' if os.environ.get('VERCEL') else BASE_DIR / 'db.sqlite3',
         }
     }
 
@@ -71,13 +73,11 @@ else:
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')]
+
+# Используем Whitenoise для статических файлов
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# Для медиа файлов (если нужно)
-MEDIA_URL = 'media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
-
-# Настройки шаблонов
+# Шаблоны
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -98,22 +98,21 @@ TEMPLATES = [
 ROOT_URLCONF = 'config.urls'
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Настройки безопасности для продакшена
-if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-
 # Язык и время
 LANGUAGE_CODE = 'ru-ru'
 TIME_ZONE = 'Europe/Moscow'
 USE_I18N = True
 USE_TZ = True
 
-# Дефолтные настройки
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-LOGIN_URL = '/admin/login/'
-LOGIN_REDIRECT_URL = '/'
-LOGOUT_REDIRECT_URL = '/'
+
+# Безопасность для продакшена
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_BROWSER_XSS_FILTER = True
+    SECURE_CONTENT_TYPE_NOSNIFF = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
