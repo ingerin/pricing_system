@@ -1,39 +1,56 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
-import aiohttp
-import asyncio
-from bs4 import BeautifulSoup
-import json
-import logging
+from typing import List, Dict, Any
 from datetime import datetime
-import redis.asyncio as redis
+import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Конфигурация
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
-SERVICES = {
-    "booking": "https://www.booking.com/searchresults.html",
-    "airbnb": "https://www.airbnb.com/api/v3/ExploreSections",
-    "ostrovok": "https://ostrovok.ru/hotel/search/",
-}
 
+# ВРЕМЕННО - убираем проблемные импорты
+# from bs4 import BeautifulSoup
+# import redis.asyncio as redis
 
 class CompetitorData(BaseModel):
     service: str
     hotel_name: str
     price_per_night: float
-    rating: Optional[float]
-    reviews_count: Optional[int]
-    occupancy: Optional[float]
-    amenities: List[str]
-    extracted_at: datetime
+    rating: float = 4.0
+    reviews_count: int = 100
+    occupancy: float = 0.7
+    amenities: List[str] = []
+    extracted_at: datetime = datetime.now()
 
 
-async def get_redis_client():
-    return await redis.from_url(REDIS_URL, decode_responses=True)
+@router.get("/")
+async def get_competitors():
+    """Базовый эндпоинт - возвращает тестовые данные"""
+    return {
+        "status": "ok",
+        "data": [
+            {
+                "service": "mock",
+                "hotel_name": "Test Hotel 1",
+                "price_per_night": 5000.0,
+                "rating": 4.5,
+                "reviews_count": 128,
+                "occupancy": 0.85,
+                "amenities": ["Wi-Fi", "Breakfast"],
+                "extracted_at": datetime.now().isoformat()
+            },
+            {
+                "service": "mock",
+                "hotel_name": "Test Hotel 2",
+                "price_per_night": 5200.0,
+                "rating": 4.3,
+                "reviews_count": 95,
+                "occupancy": 0.78,
+                "amenities": ["Wi-Fi", "Pool"],
+                "extracted_at": datetime.now().isoformat()
+            }
+        ]
+    }
 
 
 @router.post("/analyze")
@@ -44,49 +61,20 @@ async def analyze_competitors(
         guests: int = 2,
         rooms: int = 1
 ):
-    """
-    Анализ цен конкурентов на популярных платформах
-    """
-    cache_key = f"competitors:{location}:{check_in}:{check_out}"
-    redis_client = await get_redis_client()
-
-    # Проверка кэша
-    cached = await redis_client.get(cache_key)
-    if cached:
-        return json.loads(cached)
-
+    """Упрощенный анализ - без реального парсинга"""
     try:
-        # Асинхронный сбор данных с разных платформ
-        tasks = []
+        # Имитация задержки получения данных
+        import asyncio
+        await asyncio.sleep(0.1)
 
-        # Booking.com (пример - потребуется прокси и анти-бот система)
-        tasks.append(fetch_booking_data(location, check_in, check_out, guests, rooms))
-
-        # Airbnb через API (нужен токен)
-        tasks.append(fetch_airbnb_data(location, check_in, check_out, guests))
-
-        # Ostrovok.ru
-        tasks.append(fetch_ostrovok_data(location, check_in, check_out, guests))
-
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        # Обработка результатов
-        competitors_data = []
-        for result in results:
-            if isinstance(result, Exception):
-                logger.error(f"Error fetching data: {result}")
-                continue
-            if result:
-                competitors_data.extend(result)
-
-        # Сохраняем в кэш на 1 час
-        await redis_client.setex(
-            cache_key,
-            3600,
-            json.dumps([data.dict() for data in competitors_data])
-        )
-
-        return {"competitors": [data.dict() for data in competitors_data]}
+        return {
+            "location": location,
+            "check_in": check_in,
+            "check_out": check_out,
+            "competitors_found": 5,
+            "average_price": 5300,
+            "recommendation": "Your price is competitive"
+        }
 
     except Exception as e:
         logger.error(f"Analysis failed: {e}")
@@ -97,120 +85,17 @@ async def analyze_competitors(
 async def recommend_competitors(
         hotel_id: str,
         location: str,
-        category: str,
-        price_range: Optional[str] = None
+        category: str
 ):
-    """
-    Рекомендация похожих отелей для отслеживания
-    """
-    # Здесь может быть ML модель для поиска похожих отелей
-    # Пока простой алгоритм на основе категории и местоположения
-
-    recommendations = await find_similar_hotels(location, category, price_range)
-
+    """Рекомендация конкурентов"""
     return {
         "hotel_id": hotel_id,
-        "recommended_competitors": recommendations
-    }
-
-
-async def fetch_booking_data(location, check_in, check_out, guests, rooms):
-    """
-    Сбор данных с Booking.com (упрощенный пример)
-    В реальности потребуются прокси и обход защиты
-    """
-    try:
-        # Здесь должен быть реальный парсинг
-        # Это пример структуры данных
-        return [
-            CompetitorData(
-                service="booking",
-                hotel_name="Example Hotel",
-                price_per_night=4500.0,
-                rating=4.5,
-                reviews_count=128,
-                occupancy=0.85,
-                amenities=["Wi-Fi", "Breakfast", "Pool"],
-                extracted_at=datetime.now()
-            )
-        ]
-    except Exception as e:
-        logger.error(f"Booking fetch error: {e}")
-        return []
-
-
-async def fetch_airbnb_data(location, check_in, check_out, guests):
-    """
-    Сбор данных с Airbnb (требуется API ключ)
-    """
-    # Реализация с использованием официального API
-    pass
-
-
-async def fetch_ostrovok_data(location, check_in, check_out, guests):
-    """
-    Сбор данных с Ostrovok.ru
-    """
-    pass
-
-
-async def find_similar_hotels(location, category, price_range):
-    """
-    Поиск похожих отелей для отслеживания
-    """
-    # Здесь может быть более сложная логика
-    return [
-        {
-            "hotel_id": "comp_001",
-            "name": "Luxury Hotel Downtown",
-            "similarity_score": 0.92,
-            "reasons": ["same_location", "similar_category", "comparable_price"]
-        },
-        {
-            "hotel_id": "comp_002",
-            "name": "Business Inn",
-            "similarity_score": 0.87,
-            "reasons": ["same_location", "similar_amenities"]
-        }
-    ]
-
-
-@router.get("/dashboard")
-async def competitors_dashboard(
-        hotel_id: str,
-        period_days: int = 7
-):
-    """
-    Дашборд с анализом конкурентов
-    """
-    # Сбор и агрегация данных
-    stats = await calculate_competitor_stats(hotel_id, period_days)
-
-    return {
-        "hotel_id": hotel_id,
-        "period_days": period_days,
-        "market_position": stats.get("position"),
-        "price_comparison": stats.get("price_comparison"),
-        "recommendations": stats.get("recommendations")
-    }
-
-
-async def calculate_competitor_stats(hotel_id, period_days):
-    """
-    Расчет статистики по конкурентам
-    """
-    # Здесь должна быть бизнес-логика анализа
-    return {
-        "position": "market_leader",
-        "price_comparison": {
-            "your_price": 5000,
-            "average_market": 5200,
-            "min_price": 4500,
-            "max_price": 6000
-        },
-        "recommendations": [
-            "Consider lowering price on weekends",
-            "Add breakfast package",
-            "Monitor competitor X promotions"
+        "recommended_competitors": [
+            {
+                "id": "comp_001",
+                "name": f"Similar Hotel in {location}",
+                "category": category,
+                "similarity_score": 0.85
+            }
         ]
     }

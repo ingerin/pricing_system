@@ -1,30 +1,26 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-import numpy as np
-from sklearn.ensemble import RandomForestRegressor
-import pandas as pd
-from datetime import datetime, timedelta
-import json
-import logging
 from enum import Enum
+from datetime import datetime, timedelta
+import numpy as np
+import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-class Season(Enum):
+class Season(str, Enum):
     LOW = "low"
     MID = "mid"
     HIGH = "high"
     PEAK = "peak"
 
 
-class PricingStrategy(Enum):
+class PricingStrategy(str, Enum):
     AGGRESSIVE = "aggressive"
     MODERATE = "moderate"
     CONSERVATIVE = "conservative"
-    PREMIUM = "premium"
 
 
 class PricingRequest(BaseModel):
@@ -32,160 +28,57 @@ class PricingRequest(BaseModel):
     base_price: float
     check_in: str
     check_out: str
-    room_type: str
-    competitors: List[Dict[str, Any]]
-    occupancy_rate: float = 0.7
+    room_type: str = "standard"
     season: Season = Season.MID
     strategy: PricingStrategy = PricingStrategy.MODERATE
+    occupancy: float = 0.7
     events: Optional[List[str]] = None
-    demand_forecast: Optional[float] = None
 
 
-class PricingEngine:
-    def __init__(self):
-        self.models = {}
+@router.post("/calculate")
+async def calculate_price(request: PricingRequest):
+    """Расчет оптимальной цены"""
+    try:
+        # Простая логика расчета
+        price = request.base_price
 
-    def calculate_optimal_price(self, request: PricingRequest) -> Dict[str, Any]:
-        """
-        Расчет оптимальной цены с учетом множества факторов
-        """
-        # Базовый расчет
-        base_price = request.base_price
-
-        # Корректировка по сезону
-        season_factor = self._get_season_factor(request.season)
-
-        # Корректировка по загрузке
-        occupancy_factor = self._get_occupancy_factor(request.occupancy_rate)
-
-        # Анализ конкурентов
-        competitor_factor = self._analyze_competitors(request.competitors, base_price)
-
-        # Стратегия ценообразования
-        strategy_factor = self._get_strategy_factor(request.strategy)
-
-        # Корректировка на события
-        event_factor = self._get_event_factor(request.events)
-
-        # Расчет итоговой цены
-        final_price = base_price * season_factor * occupancy_factor * competitor_factor * strategy_factor * event_factor
-
-        # Округление
-        final_price = self._round_price(final_price)
-
-        return {
-            "base_price": round(base_price, 2),
-            "final_price": round(final_price, 2),
-            "factors": {
-                "season": round(season_factor, 3),
-                "occupancy": round(occupancy_factor, 3),
-                "competition": round(competitor_factor, 3),
-                "strategy": round(strategy_factor, 3),
-                "events": round(event_factor, 3)
-            },
-            "recommendation": self._generate_recommendation(
-                final_price, request.competitors
-            ),
-            "valid_until": (datetime.now() + timedelta(hours=6)).isoformat()
-        }
-
-    def _get_season_factor(self, season: Season) -> float:
-        factors = {
+        # Сезонные коэффициенты
+        season_factors = {
             Season.LOW: 0.8,
             Season.MID: 1.0,
             Season.HIGH: 1.3,
             Season.PEAK: 1.6
         }
-        return factors.get(season, 1.0)
+        price *= season_factors.get(request.season, 1.0)
 
-    def _get_occupancy_factor(self, occupancy_rate: float) -> float:
-        if occupancy_rate < 0.3:
-            return 0.9  # Снижаем цену при низкой загрузке
-        elif occupancy_rate > 0.9:
-            return 1.3  # Повышаем при высокой
-        else:
-            return 1.0
-
-    def _analyze_competitors(self, competitors: List[Dict], our_price: float) -> float:
-        if not competitors:
-            return 1.0
-
-        competitor_prices = [c.get("price_per_night", 0) for c in competitors]
-        avg_competitor_price = np.mean(competitor_prices)
-
-        if our_price < avg_competitor_price * 0.8:
-            # Мы значительно дешевле конкурентов
-            return 1.1  # Можно повысить
-        elif our_price > avg_competitor_price * 1.2:
-            # Мы значительно дороже
-            return 0.9  # Стоит снизить
-        else:
-            return 1.0
-
-    def _get_strategy_factor(self, strategy: PricingStrategy) -> float:
-        factors = {
-            PricingStrategy.AGGRESSIVE: 0.85,  # Захват рынка
-            PricingStrategy.MODERATE: 1.0,  # Баланс
-            PricingStrategy.CONSERVATIVE: 1.1,  # Максимизация прибыли
-            PricingStrategy.PREMIUM: 1.3  # Премиум позиционирование
+        # Коэффициент стратегии
+        strategy_factors = {
+            PricingStrategy.AGGRESSIVE: 0.9,
+            PricingStrategy.MODERATE: 1.0,
+            PricingStrategy.CONSERVATIVE: 1.1
         }
-        return factors.get(strategy, 1.0)
+        price *= strategy_factors.get(request.strategy, 1.0)
 
-    def _get_event_factor(self, events: Optional[List[str]]) -> float:
-        if not events:
-            return 1.0
+        # Корректировка по загрузке
+        if request.occupancy > 0.8:
+            price *= 1.15
+        elif request.occupancy < 0.4:
+            price *= 0.85
 
-        factor = 1.0
-        for event in events:
-            if "conference" in event.lower() or "festival" in event.lower():
-                factor *= 1.3
-            elif "holiday" in event.lower():
-                factor *= 1.2
-        return min(factor, 1.5)  # Максимум +50%
-
-    def _round_price(self, price: float) -> float:
-        # Округление до психологически приятных цен
-        if price < 1000:
-            return round(price / 50) * 50
-        elif price < 5000:
-            return round(price / 100) * 100
-        else:
-            return round(price / 500) * 500
-
-    def _generate_recommendation(self, price: float, competitors: List[Dict]) -> str:
-        if not competitors:
-            return "Нет данных о конкурентах для рекомендации"
-
-        competitor_prices = [c.get("price_per_night", 0) for c in competitors]
-        avg_price = np.mean(competitor_prices)
-
-        if price < avg_price * 0.9:
-            return "Цена ниже среднерыночной. Можно рассмотреть повышение."
-        elif price > avg_price * 1.1:
-            return "Цена выше среднерыночной. Рассмотрите специальные предложения."
-        else:
-            return "Цена соответствует рыночной. Текущий уровень оптимален."
-
-
-# Инициализация движка
-pricing_engine = PricingEngine()
-
-
-@router.post("/calculate")
-async def calculate_price(request: PricingRequest):
-    """
-    Расчет оптимальной цены
-    """
-    try:
-        result = pricing_engine.calculate_optimal_price(request)
-
-        # Логируем расчет
-        logger.info(f"Price calculated for {request.hotel_id}: {result}")
+        # Округление
+        price = round(price / 100) * 100
 
         return {
             "success": True,
-            "data": result,
-            "calculated_at": datetime.now().isoformat()
+            "hotel_id": request.hotel_id,
+            "base_price": request.base_price,
+            "final_price": price,
+            "calculation_details": {
+                "season_factor": season_factors.get(request.season),
+                "strategy_factor": strategy_factors.get(request.strategy),
+                "occupancy_adjustment": request.occupancy
+            },
+            "valid_until": (datetime.now() + timedelta(hours=6)).isoformat()
         }
 
     except Exception as e:
@@ -193,127 +86,36 @@ async def calculate_price(request: PricingRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/forecast")
-async def price_forecast(
+@router.get("/forecast")
+async def get_price_forecast(
         hotel_id: str,
-        period_days: int = 30,
-        include_competitors: bool = True
+        days: int = 7
 ):
-    """
-    Прогноз цен на период
-    """
-    try:
-        forecast_data = await generate_price_forecast(
-            hotel_id, period_days, include_competitors
-        )
-
-        return {
-            "hotel_id": hotel_id,
-            "forecast_period_days": period_days,
-            "forecast": forecast_data,
-            "recommendations": generate_forecast_recommendations(forecast_data)
-        }
-
-    except Exception as e:
-        logger.error(f"Forecast failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/strategies")
-async def get_pricing_strategies():
-    """
-    Доступные стратегии ценообразования
-    """
-    return {
-        "strategies": [
-            {
-                "id": "aggressive",
-                "name": "Агрессивная",
-                "description": "Захват доли рынка, цены ниже конкурентов",
-                "best_for": ["новые отели", "низкий сезон", "повышение узнаваемости"]
-            },
-            {
-                "id": "moderate",
-                "name": "Умеренная",
-                "description": "Баланс между заполняемостью и прибылью",
-                "best_for": ["стабильный бизнес", "средний сезон"]
-            },
-            {
-                "id": "conservative",
-                "name": "Консервативная",
-                "description": "Максимизация прибыли при сохранении заполняемости",
-                "best_for": ["премиум сегмент", "высокий сезон"]
-            },
-            {
-                "id": "premium",
-                "name": "Премиальная",
-                "description": "Позиционирование как премиум предложение",
-                "best_for": ["люксовые отели", "уникальные локации"]
-            }
-        ]
-    }
-
-
-async def generate_price_forecast(hotel_id, period_days, include_competitors):
-    """
-    Генерация прогноза цен
-    """
-    # Здесь должна быть сложная логика прогнозирования
-    # Пока возвращаем примерные данные
+    """Прогноз цен"""
+    base_price = 5000
 
     forecast = []
-    base_price = 5000  # Это должно быть из базы данных
+    for i in range(days):
+        date = datetime.now() + timedelta(days=i)
 
-    for day in range(period_days):
-        date = datetime.now() + timedelta(days=day)
-
-        # Простая модель сезонности
-        if date.month in [6, 7, 8, 12]:
-            season_factor = 1.3
-        elif date.month in [1, 2, 11]:
-            season_factor = 0.8
-        else:
-            season_factor = 1.0
+        # Простая модель
+        price = base_price
 
         # Выходные дороже
-        if date.weekday() >= 5:  # Суббота, воскресенье
-            weekend_factor = 1.2
-        else:
-            weekend_factor = 1.0
+        if date.weekday() >= 5:
+            price *= 1.2
 
-        forecast_price = base_price * season_factor * weekend_factor
+        # Случайные колебания
+        import random
+        price *= random.uniform(0.95, 1.05)
 
         forecast.append({
             "date": date.strftime("%Y-%m-%d"),
-            "predicted_price": round(forecast_price, 2),
-            "recommended_min": round(forecast_price * 0.9, 2),
-            "recommended_max": round(forecast_price * 1.1, 2),
-            "confidence": 0.85 - (day * 0.01)  # Уверенность снижается со временем
+            "predicted_price": round(price, 2),
+            "confidence": 0.8 - (i * 0.05)
         })
 
-    return forecast
-
-
-def generate_forecast_recommendations(forecast_data):
-    """
-    Генерация рекомендаций на основе прогноза
-    """
-    prices = [day["predicted_price"] for day in forecast_data]
-    avg_price = np.mean(prices)
-    max_price = max(prices)
-    min_price = min(prices)
-
-    recommendations = []
-
-    if max_price / min_price > 1.5:
-        recommendations.append(
-            "Значительные колебания цен в периоде. "
-            "Рекомендуется динамическое ценообразование."
-        )
-
-    if avg_price > 8000:
-        recommendations.append(
-            "Высокие средние цены. Проверьте конкурентоспособность."
-        )
-
-    return recommendations
+    return {
+        "hotel_id": hotel_id,
+        "forecast": forecast
+    }

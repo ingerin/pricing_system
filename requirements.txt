@@ -5,5 +5,3 @@ aiohttp==3.9.1
 pandas==2.1.4
 numpy==1.26.2
 python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-python-multipart==0.0.6
