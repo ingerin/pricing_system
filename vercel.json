@@ -1,6 +1,6 @@
 {
   "functions": {
-    "index.py": {
+    "app.py": {
       "maxDuration": 10,
       "memory": 1024
     }
@@ -8,7 +8,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "index.py"
+      "destination": "/app.py"
     }
   ]
 }
