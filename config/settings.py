@@ -13,7 +13,7 @@ SECRET_KEY = 'django-insecure-!@#123-pricesmart-456-789'
 DEBUG = True
 
 # Разрешенные хосты
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'pricing_system.vercel.app']
 
 # Приложения
 INSTALLED_APPS = [
