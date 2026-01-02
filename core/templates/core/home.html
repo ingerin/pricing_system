@@ -1,0 +1,51 @@
+{% extends 'core/base.html' %}
+
+{% block title %}PriceSmart - Главная{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4">
+            <i class="fas fa-chart-line text-primary"></i><br>
+            PriceSmart
+        </h1>
+        <p class="lead">Система динамического ценообразования для гостиниц</p>
+    </div>
+
+    <!-- Карточки модулей -->
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-search-dollar fa-3x text-primary mb-3"></i>
+                    <h4>Анализ конкурентов</h4>
+                    <p>Отслеживание цен в реальном времени</p>
+                    <a href="{% url 'competitors' %}" class="btn btn-primary">Перейти</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-calculator fa-3x text-success mb-3"></i>
+                    <h4>Ценообразование</h4>
+                    <p>AI-алгоритмы расчета оптимальных цен</p>
+                    <a href="{% url 'pricing' %}" class="btn btn-success">Перейти</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="fas fa-file-pdf fa-3x text-warning mb-3"></i>
+                    <h4>Отчеты</h4>
+                    <p>PDF отчеты с обоснованием цен</p>
+                    <a href="{% url 'reports' %}" class="btn btn-warning">Перейти</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

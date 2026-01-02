@@ -1,0 +1,74 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Панель управления - PriceSmart{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">
+    <i class="fas fa-tachometer-alt"></i> Панель управления
+</h1>
+
+<!-- Статистика -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5><i class="fas fa-hotel"></i> Отелей</h5>
+                <h2>3</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5><i class="fas fa-ruble-sign"></i> Средняя цена</h5>
+                <h2>8 450 ₽</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5><i class="fas fa-users"></i> Конкурентов</h5>
+                <h2>24</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5><i class="fas fa-percentage"></i> Загрузка</h5>
+                <h2>78%</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Быстрые ссылки -->
+<div class="card">
+    <div class="card-body">
+        <h5 class="mb-3">Быстрые действия</h5>
+        <div class="row">
+            <div class="col-md-3 mb-2">
+                <a href="{% url 'competitors' %}" class="btn btn-primary w-100">
+                    <i class="fas fa-search-dollar"></i> Анализ конкурентов
+                </a>
+            </div>
+            <div class="col-md-3 mb-2">
+                <a href="{% url 'pricing' %}" class="btn btn-success w-100">
+                    <i class="fas fa-calculator"></i> Расчет цен
+                </a>
+            </div>
+            <div class="col-md-3 mb-2">
+                <a href="{% url 'reports' %}" class="btn btn-warning w-100">
+                    <i class="fas fa-file-pdf"></i> Отчеты
+                </a>
+            </div>
+            <div class="col-md-3 mb-2">
+                <a href="/admin/" class="btn btn-secondary w-100">
+                    <i class="fas fa-cog"></i> Настройки
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
