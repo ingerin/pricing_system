@@ -1107,41 +1107,104 @@ DASHBOARD_HTML = """
             document.getElementById('addressResultsList').innerHTML = 
                 '<div class="text-center"><div class="spinner-border spinner-border-sm"></div> Поиск...</div>';
             
-            // Обычный поиск по адресу
-            fetch(`/api/hotel/address/search?query=${encodeURIComponent(query)}`)
+            // Сначала пробуем быстрый поиск через Photon
+            fetch(`/api/hotel/address/quick?query=${encodeURIComponent(query)}`)
                 .then(response => response.json())
                 .then(data => {
-                    let html = '';
-                    if (data.results.length === 0) {
-                        html = '<p class="text-muted">Ничего не найдено. Попробуйте другой запрос.</p>';
+                    // Если Photon не дал результатов, пробуем Nominatim
+                    if (data.results && data.results.length > 0) {
+                        displaySearchResults(data.results, data.source);
                     } else {
-                        data.results.forEach((result, index) => {
-                            // Сохраняем весь объект в data-атрибут как JSON
-                            const jsonData = JSON.stringify(result).replace(/"/g, '&quot;');
-                            html += `
-                                <div class="card mb-2 address-result" onclick="selectAddress(${index})" 
-                                     data-json='${jsonData}'>
-                                    <div class="card-body p-2">
-                                        <h6 class="card-title mb-1">${result.name}</h6>
-                                        <p class="card-text small text-muted mb-1">${result.address}</p>
-                                        <small class="text-muted">
-                                            Координаты: ${result.lat.toFixed(6)}, ${result.lng.toFixed(6)}
-                                        </small>
-                                        ${result.description ? `<br><small><i>${result.description}</i></small>` : ''}
-                                    </div>
-                                </div>
-                            `;
+                        // Fallback к Nominatim
+                        return fetch(`/api/hotel/address/search?query=${encodeURIComponent(query)}`);
+                    }
+                })
+                .then(response => {
+                    if (response && response.json) {
+                        return response.json().then(data => {
+                            displaySearchResults(data.results || [], data.source || 'nominatim');
                         });
                     }
-                    document.getElementById('addressResultsList').innerHTML = html;
                 })
                 .catch(error => {
                     console.error('Ошибка поиска адреса:', error);
                     document.getElementById('addressResultsList').innerHTML = 
-                        '<p class="text-danger">Ошибка поиска адреса</p>';
+                        '<p class="text-danger">Ошибка поиска адреса. Попробуйте другой запрос.</p>';
                 });
         }
         
+        // Функция отображения результатов поиска
+        function displaySearchResults(results, source) {
+            let html = '';
+            
+            if (!results || results.length === 0) {
+                html = `
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Ничего не найдено. Попробуйте:
+                        <ul class="mb-0 mt-2">
+                            <li>Указать улицу и номер дома (например, "Тверская 15")</li>
+                            <li>Искать более конкретное место</li>
+                            <li>Проверить правильность написания</li>
+                        </ul>
+                    </div>
+                `;
+            } else {
+                results.forEach((result, index) => {
+                    // Сохраняем весь объект в data-атрибут как JSON
+                    const jsonData = JSON.stringify(result).replace(/"/g, '&quot;');
+                    
+                    // Определяем иконку в зависимости от типа результата
+                    let icon = 'bi-geo-alt';
+                    if (result.type === 'hotel' || result.class === 'tourism') {
+                        icon = 'bi-building';
+                    } else if (result.type === 'restaurant' || result.class === 'amenity') {
+                        icon = 'bi-cup';
+                    }
+                    
+                    html += `
+                        <div class="card mb-2 address-result" onclick="selectAddress(${index})" 
+                             data-json='${jsonData}'>
+                            <div class="card-body p-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div style="flex-grow: 1;">
+                                        <h6 class="card-title mb-1">
+                                            <i class="bi ${icon} me-1"></i>
+                                            ${result.name || 'Адрес'}
+                                        </h6>
+                                        <p class="card-text small text-muted mb-1">${result.address}</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <small class="text-muted">
+                                                <i class="bi bi-geo"></i> 
+                                                ${result.lat.toFixed(6)}, ${result.lng.toFixed(6)}
+                                            </small>
+                                            <small class="badge bg-secondary">${source}</small>
+                                        </div>
+                                        ${result.description ? `<small><i>${result.description}</i></small>` : ''}
+                                    </div>
+                                    <div class="ms-2">
+                                        <i class="bi bi-chevron-right text-primary"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                // Добавляем информацию о источнике
+                html += `
+                    <div class="text-center mt-2">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle"></i>
+                            Результаты из ${source === 'nominatim' ? 'OpenStreetMap' : source}
+                        </small>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('addressResultsList').innerHTML = html;
+        }
+                
         // Поиск по координатам
         function searchByCoordinates() {
             const lat = document.getElementById('coordLat').value;
@@ -1969,209 +2032,432 @@ async def update_hotel_address(update: HotelAddressUpdate):
 
 @app.get("/api/hotel/address/search")
 async def search_address(query: str):
-    """Поиск адресов через Nominatim (OpenStreetMap)"""
+    """Поиск адресов через Nominatim (OpenStreetMap) с улучшенной обработкой"""
     import aiohttp
+    import time
 
     if not query or len(query) < 2:
-        raise HTTPException(status_code=400, detail="Слишком короткий запрос")
+        return {
+            "query": query,
+            "results": [],
+            "count": 0,
+            "source": "empty_query"
+        }
+
+    # Задержка для соблюдения лимитов Nominatim (1 запрос/секунду)
+    time.sleep(1)
 
     try:
         # Используем Nominatim API (бесплатный)
         async with aiohttp.ClientSession() as session:
             url = "https://nominatim.openstreetmap.org/search"
+
+            # Формируем параметры запроса
             params = {
-                "q": query,
+                "q": f"{query}, Россия",  # Добавляем страну для точности
                 "format": "json",
                 "addressdetails": 1,
                 "limit": 10,
                 "countrycodes": "ru",  # ограничиваем Россией
                 "accept-language": "ru",
-                "viewbox": "37.3,55.5,37.9,56.0",  # примерная область Москвы
-                "bounded": 0  # не ограничивать строго
+                "viewbox": "37.1,55.5,38.1,56.1",  # область Москвы и МО
+                "bounded": 0
             }
 
-            # Добавляем User-Agent (требуется Nominatim)
+            # Правильный User-Agent (обязательно для Nominatim)
             headers = {
-                "User-Agent": "HotelPricingApp/1.0 (contact@example.com)"
+                "User-Agent": "HotelPricingSystem/1.0 (https://myhotelapp.com; contact@example.com)"
             }
 
-            async with session.get(url, params=params, headers=headers) as response:
+            # Добавляем timeout для запроса
+            timeout = aiohttp.ClientTimeout(total=10)
+
+            async with session.get(url, params=params, headers=headers, timeout=timeout) as response:
                 if response.status != 200:
-                    # Если API не работает, используем мок
+                    print(f"Nominatim API error: {response.status}")
                     return await search_address_mock(query)
 
                 data = await response.json()
 
                 results = []
-                for item in data:
-                    # Формируем читаемый адрес
-                    address_parts = []
+                if data and isinstance(data, list):
+                    for item in data[:8]:  # Ограничиваем 8 результатами
+                        try:
+                            # Получаем базовую информацию
+                            display_name = item.get("display_name", "")
+                            lat = item.get("lat")
+                            lon = item.get("lon")
 
-                    # Используем display_name как основной адрес
-                    display_name = item.get("display_name", "")
+                            if not lat or not lon:
+                                continue
 
-                    # Парсим адресные компоненты
-                    address = item.get("address", {})
+                            # Парсим адресные компоненты
+                            address = item.get("address", {})
 
-                    # Формируем понятное название
-                    name_parts = []
-                    if address.get("road"):
-                        name_parts.append(address.get("road"))
-                        if address.get("house_number"):
-                            name_parts[-1] += f", {address.get('house_number')}"
+                            # Формируем понятное название
+                            name_parts = []
 
-                    name = " ".join(name_parts) if name_parts else display_name.split(",")[0]
+                            # Пробуем получить улицу и дом
+                            road = address.get("road") or address.get("street") or address.get("pedestrian")
+                            house_number = address.get("house_number") or address.get("housenumber")
 
-                    # Формируем полный адрес
-                    address_components = []
+                            if road:
+                                if house_number:
+                                    name_parts.append(f"{road}, {house_number}")
+                                else:
+                                    name_parts.append(road)
+                            else:
+                                # Если нет улицы, используем первый элемент display_name
+                                name_parts.append(display_name.split(",")[0].strip())
 
-                    # Добавляем основные компоненты в правильном порядке
-                    components_order = [
-                        "house_number", "road", "village", "town",
-                        "city_district", "city", "state", "country"
-                    ]
+                            # Формируем полный адрес из значимых компонентов
+                            address_components = []
 
-                    for comp in components_order:
-                        if comp in address and address[comp]:
-                            address_components.append(address[comp])
+                            # Порядок важности компонентов адреса
+                            important_components = [
+                                "house_number", "road", "street", "pedestrian",
+                                "village", "town", "city_district", "city",
+                                "state", "country"
+                            ]
 
-                    full_address = ", ".join(address_components) if address_components else display_name
+                            for comp in important_components:
+                                if comp in address and address[comp]:
+                                    address_components.append(address[comp])
 
-                    # Определяем город
-                    city = (
-                            address.get("city") or
-                            address.get("town") or
-                            address.get("village") or
-                            "Москва"
-                    )
+                            # Если не нашли важных компонентов, используем display_name
+                            if not address_components:
+                                # Берем первые 3 части из display_name
+                                address_parts = [p.strip() for p in display_name.split(",")[:3]]
+                                full_address = ", ".join(address_parts)
+                            else:
+                                full_address = ", ".join(address_components[:3])
 
-                    results.append({
-                        "name": name[:100],  # ограничиваем длину
-                        "address": full_address[:200],
-                        "lat": float(item["lat"]),
-                        "lng": float(item["lon"]),
-                        "city": city,
-                        "display_name": display_name[:300],
-                        "importance": item.get("importance", 0)
-                    })
+                            # Определяем город
+                            city = (
+                                    address.get("city") or
+                                    address.get("town") or
+                                    address.get("village") or
+                                    address.get("municipality") or
+                                    address.get("state") or
+                                    "Москва"
+                            )
+
+                            # Создаем объект результата
+                            result_item = {
+                                "name": " ".join(name_parts)[:100],
+                                "address": full_address[:200],
+                                "lat": float(lat),
+                                "lng": float(lon),
+                                "city": city[:50],
+                                "display_name": display_name[:300],
+                                "importance": float(item.get("importance", 0)),
+                                "type": item.get("type", ""),
+                                "class": item.get("class", "")
+                            }
+
+                            results.append(result_item)
+
+                        except (ValueError, KeyError, TypeError) as e:
+                            print(f"Error parsing address item: {e}")
+                            continue
 
                 # Сортируем по важности
                 results.sort(key=lambda x: x["importance"], reverse=True)
 
-                return {
-                    "query": query,
-                    "results": results[:8],
-                    "count": len(results),
-                    "source": "nominatim"
-                }
+                # Если есть результаты, возвращаем их
+                if results:
+                    return {
+                        "query": query,
+                        "results": results,
+                        "count": len(results),
+                        "source": "nominatim"
+                    }
+                else:
+                    # Если нет результатов, пробуем альтернативный запрос
+                    return await search_address_alternative(query, session)
 
+    except aiohttp.ClientError as e:
+        print(f"Network error searching address: {e}")
+        return await search_address_mock(query)
     except Exception as e:
-        print(f"Ошибка геокодирования: {e}")
-        # В случае ошибки возвращаем мок-данные
+        print(f"Unexpected error searching address: {e}")
         return await search_address_mock(query)
 
 
+async def search_address_alternative(query: str, session: aiohttp.ClientSession):
+    """Альтернативный поиск с другим запросом"""
+    try:
+        # Пробуем без страны
+        url = "https://nominatim.openstreetmap.org/search"
+        params = {
+            "q": query,
+            "format": "json",
+            "limit": 5,
+            "accept-language": "ru"
+        }
+
+        headers = {
+            "User-Agent": "HotelPricingSystem/1.0 (https://myhotelapp.com; contact@example.com)"
+        }
+
+        async with session.get(url, params=params, headers=headers) as response:
+            if response.status == 200:
+                data = await response.json()
+
+                results = []
+                for item in data[:5]:
+                    try:
+                        results.append({
+                            "name": item.get("display_name", "").split(",")[0][:100],
+                            "address": item.get("display_name", "")[:200],
+                            "lat": float(item.get("lat", 55.7558)),
+                            "lng": float(item.get("lon", 37.6173)),
+                            "city": "Москва",
+                            "importance": float(item.get("importance", 0))
+                        })
+                    except:
+                        continue
+
+                if results:
+                    return {
+                        "query": query,
+                        "results": results,
+                        "count": len(results),
+                        "source": "nominatim_alt"
+                    }
+
+    except Exception as e:
+        print(f"Alternative search failed: {e}")
+
+    # Если все варианты не сработали, используем мок
+    return await search_address_mock(query)
+
+
 async def search_address_mock(query: str):
-    """Мок-поиск адресов с расширенными данными"""
+    """Улучшенный мок-поиск адресов"""
     import re
 
-    # Более умный мок-поиск
-    query_lower = query.lower()
+    query_lower = query.lower().strip()
 
-    # Стандартные тестовые результаты
-    test_results = [
-        {
-            "name": "Красная площадь, 1",
-            "address": "Красная площадь, 1, Москва, Россия",
+    # Более обширная база тестовых адресов
+    test_results = []
+
+    # Проверяем конкретные запросы
+    if "москвореч" in query_lower:
+        # Ищем номер дома
+        house_match = re.search(r'(\d+[а-я]*)', query)
+        house_number = house_match.group(1) if house_match else "19"
+
+        test_results.extend([
+            {
+                "name": f"Москворечье, {house_number}",
+                "address": f"ул. Москворечье, {house_number}, Москва, Россия",
+                "lat": 55.661234,
+                "lng": 37.660987,
+                "city": "Москва",
+                "importance": 0.9,
+                "description": "Жилой район"
+            },
+            {
+                "name": "БЦ Москворечье",
+                "address": "ул. Москворечье, 1, Москва, Россия",
+                "lat": 55.661500,
+                "lng": 37.661000,
+                "city": "Москва",
+                "importance": 0.8,
+                "description": "Бизнес-центр"
+            }
+        ])
+
+    # Проверяем другие распространенные запросы
+    elif "красная" in query_lower and "площа" in query_lower:
+        test_results.append({
+            "name": "Красная площадь",
+            "address": "Красная площадь, Москва, Россия",
             "lat": 55.754047,
             "lng": 37.620409,
             "city": "Москва",
-            "description": "Историческая площадь"
-        },
-        {
-            "name": "ул. Тверская, 15",
-            "address": "ул. Тверская, 15, Москва, Россия",
+            "importance": 0.95,
+            "description": "Главная площадь Москвы"
+        })
+
+    elif "тверск" in query_lower:
+        house_match = re.search(r'(\d+[а-я]*)', query)
+        house_number = house_match.group(1) if house_match else "15"
+
+        test_results.append({
+            "name": f"Тверская, {house_number}",
+            "address": f"ул. Тверская, {house_number}, Москва, Россия",
             "lat": 55.760428,
             "lng": 37.606839,
             "city": "Москва",
+            "importance": 0.85,
             "description": "Центральная улица"
-        },
-        {
-            "name": "Московский Кремль",
-            "address": "Московский Кремль, Москва, Россия",
-            "lat": 55.751244,
-            "lng": 37.618423,
-            "city": "Москва",
-            "description": "Историческая крепость"
-        },
-        {
-            "name": "Москва-Сити",
-            "address": "Пресненская набережная, 8с1, Москва, Россия",
-            "lat": 55.748710,
-            "lng": 37.539712,
-            "city": "Москва",
-            "description": "Деловой центр"
-        },
-        {
-            "name": "ВДНХ",
-            "address": "проспект Мира, 119, Москва, Россия",
-            "lat": 55.829493,
-            "lng": 37.631676,
-            "city": "Москва",
-            "description": "Выставка достижений народного хозяйства"
-        }
-    ]
-
-    # Если запрос содержит "Москворечье", добавляем соответствующие результаты
-    if "москвореч" in query_lower:
-        # Ищем номер дома в запросе
-        house_match = re.search(r'(\d+[а-я]*)$', query)
-        house_number = house_match.group(1) if house_match else "19"
-
-        test_results.insert(0, {
-            "name": f"Москворечье, {house_number}",
-            "address": f"ул. Москворечье, {house_number}, Москва, Россия",
-            "lat": 55.661234,
-            "lng": 37.660987,
-            "city": "Москва",
-            "description": "Жилой район"
         })
 
-    # Если запрос содержит номер дома, пытаемся его обработать
-    elif re.search(r'\d+', query):
-        street_match = re.match(r'([а-яё\s]+)\s*(\d+[а-я]*)', query, re.IGNORECASE)
+    elif "арбат" in query_lower:
+        test_results.append({
+            "name": "Арбат",
+            "address": "ул. Арбат, Москва, Россия",
+            "lat": 55.750028,
+            "lng": 37.589722,
+            "city": "Москва",
+            "importance": 0.8,
+            "description": "Пешеходная улица"
+        })
+
+    # Генерация результатов для запросов с номерами домов
+    elif re.search(r'\d+[а-я]*', query_lower):
+        # Пытаемся извлечь улицу и номер дома
+        street_match = re.match(r'([а-яё\s\-]+)\s*(\d+[а-я]*)', query, re.IGNORECASE)
         if street_match:
             street_name = street_match.group(1).strip()
             house_number = street_match.group(2)
 
-            test_results.insert(0, {
+            test_results.append({
                 "name": f"{street_name}, {house_number}",
                 "address": f"{street_name}, {house_number}, Москва, Россия",
-                "lat": 55.7 + (len(query) % 100) / 1000,  # Генерация координат
-                "lng": 37.6 + (len(query) % 100) / 1000,
+                "lat": 55.75 + (hash(street_name) % 100) / 1000,  # Псевдо-случайные координаты
+                "lng": 37.62 + (hash(house_number) % 100) / 1000,
                 "city": "Москва",
+                "importance": 0.7,
                 "description": "По запросу пользователя"
             })
 
-    # Фильтрация результатов по запросу
-    filtered_results = []
-    for result in test_results:
-        # Ищем совпадения в названии, адресе или описании
-        if (query_lower in result["name"].lower() or
-                query_lower in result["address"].lower() or
-                query_lower in result["description"].lower()):
-            filtered_results.append(result)
+    # Добавляем стандартные результаты если мало своих
+    if len(test_results) < 3:
+        standard_results = [
+            {
+                "name": "Красная площадь, 1",
+                "address": "Красная площадь, 1, Москва, Россия",
+                "lat": 55.754047,
+                "lng": 37.620409,
+                "city": "Москва",
+                "importance": 0.9,
+                "description": "Историческая площадь"
+            },
+            {
+                "name": "ул. Тверская, 15",
+                "address": "ул. Тверская, 15, Москва, Россия",
+                "lat": 55.760428,
+                "lng": 37.606839,
+                "city": "Москва",
+                "importance": 0.85,
+                "description": "Центральная улица"
+            },
+            {
+                "name": "Московский Кремль",
+                "address": "Московский Кремль, Москва, Россия",
+                "lat": 55.751244,
+                "lng": 37.618423,
+                "city": "Москва",
+                "importance": 0.8,
+                "description": "Историческая крепость"
+            }
+        ]
 
-    # Если ничего не найдено, возвращаем все результаты
-    results = filtered_results if filtered_results else test_results
+        # Фильтруем стандартные результаты по запросу
+        for result in standard_results:
+            if (query_lower in result["name"].lower() or
+                    query_lower in result["address"].lower()):
+                test_results.append(result)
+
+        # Если все еще мало, добавляем все
+        if len(test_results) < 2:
+            test_results.extend(standard_results[:2])
 
     return {
         "query": query,
-        "results": results[:5],
-        "count": len(results),
+        "results": test_results[:5],
+        "count": len(test_results),
         "source": "mock"
     }
 
+
+@app.get("/api/hotel/address/quick")
+async def quick_search_address(query: str):
+    """Быстрый поиск через Photon API (более либеральный)"""
+    import aiohttp
+
+    if not query or len(query) < 2:
+        return {"results": []}
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            url = "https://photon.komoot.io/api/"
+            params = {
+                "q": f"{query}, Россия",
+                "lang": "ru",
+                "limit": 8,
+                "lat": 55.7558,
+                "lon": 37.6173,
+                "radius": 100000  # 100 км радиус
+            }
+
+            async with session.get(url, params=params, timeout=5) as response:
+                if response.status == 200:
+                    data = await response.json()
+
+                    results = []
+                    for feature in data.get("features", []):
+                        properties = feature.get("properties", {})
+                        geometry = feature.get("geometry", {})
+
+                        # Извлекаем координаты
+                        coords = geometry.get("coordinates", [])
+                        if len(coords) < 2:
+                            continue
+
+                        # Формируем имя
+                        name = properties.get("name", "")
+                        street = properties.get("street", "")
+                        housenumber = properties.get("housenumber", "")
+
+                        if street and housenumber:
+                            display_name = f"{street}, {housenumber}"
+                        elif street:
+                            display_name = street
+                        else:
+                            display_name = name or properties.get("osm_value", "")
+
+                        # Формируем адрес
+                        address_parts = []
+                        if street:
+                            if housenumber:
+                                address_parts.append(f"{street}, {housenumber}")
+                            else:
+                                address_parts.append(street)
+
+                        city = properties.get("city", "Москва")
+                        if city:
+                            address_parts.append(city)
+
+                        if properties.get("country"):
+                            address_parts.append(properties["country"])
+
+                        full_address = ", ".join(address_parts)
+
+                        results.append({
+                            "name": display_name[:100],
+                            "address": full_address[:200] or display_name[:200],
+                            "lat": float(coords[1]),
+                            "lng": float(coords[0]),
+                            "city": city[:50],
+                            "source": "photon"
+                        })
+
+                    return {
+                        "query": query,
+                        "results": results[:6],
+                        "count": len(results),
+                        "source": "photon"
+                    }
+
+    except Exception as e:
+        print(f"Photon search error: {e}")
+
+    # Fallback to mock
+    return await search_address_mock(query)
 
 @app.get("/api/hotel/address/reverse")
 async def reverse_geocode(lat: float, lng: float):
