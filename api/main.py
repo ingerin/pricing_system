@@ -1167,6 +1167,7 @@ DASHBOARD_HTML = """
         let ourHotelPrice = 5500;
         let ourHotelData = null;
         let selectedAddress = null;
+        let priceChart = null; // Глобальная переменная для графика
 
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
@@ -1569,11 +1570,22 @@ DASHBOARD_HTML = """
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
             });
+            
+            // Используем event из параметра функции
+            const clickedElement = window.event ? window.event.target : arguments[0] ? arguments[0].target : null;
+            if (clickedElement) {
+                clickedElement.classList.add('active');
+            }
+            
             document.getElementById(tabName + 'Tab').style.display = 'block';
-            event.target.classList.add('active');
 
             if (tabName === 'competitors') {
                 setTimeout(initMap, 100);
+            } else if (tabName === 'overview') {
+                // Если график еще не создан, создаем его
+                if (!priceChart) {
+                    setTimeout(createPriceChart, 100);
+                }
             }
         }
 
@@ -1607,7 +1619,7 @@ DASHBOARD_HTML = """
                 if (map) {
                     Object.keys(markers).forEach(key => {
                         map.removeLayer(markers[key]);
-                    };
+                    });
                 }
                 markers = {};
 
@@ -1620,18 +1632,18 @@ DASHBOARD_HTML = """
                 });
 
                 // Обновляем статистику
-        updateStats(data.competitors);
-        // Показываем список отелей
-        renderHotelsList(data.competitors);
+                updateStats(data.competitors);
+                // Показываем список отелей
+                renderHotelsList(data.competitors);
 
-        // Обновляем отображение нашего отеля
-        updateOurHotelDisplay();
+                // Обновляем отображение нашего отеля
+                updateOurHotelDisplay();
 
-    } catch (error) {
-        console.error('Ошибка загрузки данных карты:', error);
-    }
-}
-
+            } catch (error) {
+                console.error('Ошибка загрузки данных карты:', error);
+            }
+        }
+    
         // Добавить наш отель на карту
         function addOurHotel(hotel) {
             const icon = L.divIcon({
@@ -1961,16 +1973,16 @@ DASHBOARD_HTML = """
         function generateFinancialReport() {
             alert('Финансовый отчет генерируется...');
         }
-
+    
         function generatePricingReport() {
             alert('Отчет по ценам генерируется...');
         }
-
+    
         function generateCompetitorReport() {
             alert('Отчет по конкурентам генерируется...');
         }
         
-        // Остальные функции (без изменений)
+        // Остальные функции
         function updateTime() {
             const lastUpdateElement = document.getElementById('lastUpdate');
             if (lastUpdateElement) {
@@ -2010,7 +2022,6 @@ DASHBOARD_HTML = """
                 console.error('Ошибка загрузки данных:', error);
             }
         }
-        let priceChart = null; // Добавьте эту глобальную переменную в начало скрипта
         
         function createPriceChart() {
             const ctx = document.getElementById('priceChart');
@@ -2064,8 +2075,8 @@ DASHBOARD_HTML = """
                         scales: {
                             y: {
                                 beginAtZero: false,
-                                min: 2000, // Установите минимальное значение
-                                max: 20000, // Установите максимальное значение
+                                suggestedMin: 4500,
+                                suggestedMax: 6500,
                                 ticks: {
                                     callback: function(value) {
                                         return value.toLocaleString('ru-RU') + ' ₽';
@@ -2126,15 +2137,15 @@ DASHBOARD_HTML = """
         function calculatePrice() {
             showTab('pricing');
         }
-
+    
         function analyzeCompetitors() {
             showTab('competitors');
         }
-
+    
         function generateReport() {
             showTab('reports');
         }
-
+    
         const occupancySliderElement = document.getElementById('occupancySlider');
         if (occupancySliderElement) {
             occupancySliderElement.addEventListener('input', function(e) {
