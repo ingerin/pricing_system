@@ -1607,7 +1607,7 @@ DASHBOARD_HTML = """
                 if (map) {
                     Object.keys(markers).forEach(key => {
                         map.removeLayer(markers[key]);
-                    }
+                    };
                 }
                 markers = {};
 
