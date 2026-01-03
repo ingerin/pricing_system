@@ -712,6 +712,85 @@ DASHBOARD_HTML = """
             display: block;
             max-height: 100%;
         }
+        
+        /* Стили для модальных окон с информацией об отелях */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 3000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Стили для сравнения */
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .comparison-table th,
+        .comparison-table td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        
+        .comparison-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        
+        /* Улучшенные стили для карточек сравнения */
+        .comparison-card {
+            transition: transform 0.3s;
+            height: 100%;
+        }
+        
+        .comparison-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        /* Анимация для появления попапа */
+        .leaflet-popup-content-wrapper {
+            animation: popupFadeIn 0.2s ease-out;
+        }
+        
+        @keyframes popupFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
     </style>
 </head>
 <body>
@@ -2191,7 +2270,8 @@ DASHBOARD_HTML = """
                         justify-content: center;
                         color: white;
                         font-size: 20px;
-                    ">
+                        cursor: pointer;
+                    " onclick="showHotelInfo('${hotel.id}', event)">
                         <i class="bi bi-house-door"></i>
                     </div>
                 `,
@@ -2200,14 +2280,17 @@ DASHBOARD_HTML = """
 
             const marker = L.marker([hotel.lat, hotel.lng], { icon: icon })
                 .addTo(map)
+                .on('click', function() {
+                    showHotelInfoModal(hotel);
+                })
                 .bindPopup(`
                     <div style="min-width: 200px;">
                         <h6><b>${hotel.name}</b></h6>
                         <p><i class="bi bi-geo-alt"></i> ${hotel.address}</p>
                         <p><i class="bi bi-cash"></i> <b>${hotel.price.toLocaleString('ru-RU')} ₽</b></p>
                         <p><i class="bi bi-star"></i> ${hotel.rating} ★</p>
-                        <button class="btn btn-sm btn-outline-primary w-100 mt-2" onclick="openAddressModal()">
-                            <i class="bi bi-pencil"></i> Изменить адрес
+                        <button class="btn btn-sm btn-outline-primary w-100 mt-2" onclick="showHotelInfoModalFromPopup('${hotel.id}')">
+                            <i class="bi bi-info-circle"></i> Подробная информация
                         </button>
                     </div>
                 `);
@@ -2250,7 +2333,7 @@ DASHBOARD_HTML = """
                         color: white;
                         cursor: pointer;
                         transition: all 0.3s;
-                    " onclick="selectHotel('${hotel.id}', event)">
+                    " onclick="showHotelInfo('${hotel.id}', event)">
                         <i class="bi bi-building"></i>
                     </div>
                 `,
@@ -2259,6 +2342,9 @@ DASHBOARD_HTML = """
 
             const marker = L.marker([hotel.lat, hotel.lng], { icon: icon })
                 .addTo(map)
+                .on('click', function() {
+                    showHotelInfoModal(hotel);
+                })
                 .bindPopup(`
                     <div style="min-width: 200px;">
                         <h6><b>${hotel.name}</b></h6>
@@ -2267,9 +2353,14 @@ DASHBOARD_HTML = """
                         <p><i class="bi bi-cash"></i> <b>${hotel.price.toLocaleString('ru-RU')} ₽</b></p>
                         <p><i class="bi bi-star"></i> ${hotel.rating} ★</p>
                         <p>Разница: <span class="badge ${priceClass}">${priceDiff > 0 ? '+' : ''}${priceDiff} ₽</span></p>
-                        <button class="btn btn-sm btn-primary w-100 mt-2" onclick="selectHotel('${hotel.id}')">
-                            <i class="bi bi-plus-circle"></i> Выбрать для анализа
-                        </button>
+                        <div class="d-flex gap-2 mt-2">
+                            <button class="btn btn-sm btn-primary w-50" onclick="selectHotel('${hotel.id}')">
+                                <i class="bi bi-plus-circle"></i> Выбрать
+                            </button>
+                            <button class="btn btn-sm btn-outline-info w-50" onclick="showHotelInfoModalFromPopup('${hotel.id}')">
+                                <i class="bi bi-info-circle"></i> Подробнее
+                            </button>
+                        </div>
                     </div>
                 `);
 
@@ -2779,6 +2870,414 @@ DASHBOARD_HTML = """
                     occupancyValueElement.textContent = e.target.value + '%';
                 }
             });
+        }
+                
+        // ===== ФУНКЦИИ ДЛЯ ОТОБРАЖЕНИЯ ИНФОРМАЦИИ ОБ ОТЕЛЕ =====
+        
+        // Временно показывать информацию в алерте (можно заменить на модальное окно)
+        function showHotelInfo(hotelId, event) {
+            if (event) event.stopPropagation();
+            
+            // Находим отель по ID
+            let hotel;
+            if (hotelId === 'our_hotel') {
+                hotel = ourHotelData;
+            } else {
+                hotel = allCompetitorsData.find(h => h.id === hotelId);
+            }
+            
+            if (!hotel) {
+                console.error('Отель не найден:', hotelId);
+                return;
+            }
+            
+            // Открываем попап маркера
+            if (markers[hotelId]) {
+                markers[hotelId].openPopup();
+            }
+        }
+        
+        // Модальное окно с подробной информацией об отеле
+        function showHotelInfoModal(hotel) {
+            // Если это наш отель
+            const isOurHotel = hotel.id === 'our_hotel';
+            
+            // Рассчитываем разницу цен (только для конкурентов)
+            let priceDiff = 0;
+            let priceDiffClass = '';
+            let priceDiffText = '';
+            
+            if (!isOurHotel && ourHotelData) {
+                priceDiff = hotel.price - ourHotelData.price;
+                if (priceDiff > 500) {
+                    priceDiffClass = 'price-higher';
+                    priceDiffText = `Дороже на ${priceDiff} ₽`;
+                } else if (priceDiff < -500) {
+                    priceDiffClass = 'price-lower';
+                    priceDiffText = `Дешевле на ${Math.abs(priceDiff)} ₽`;
+                } else {
+                    priceDiffClass = 'price-same';
+                    priceDiffText = 'Примерно одинаково';
+                }
+            }
+            
+            // Создаем HTML для модального окна
+            const modalHtml = `
+                <div id="hotelDetailModal" class="modal-overlay" style="display: flex;">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4><i class="bi ${isOurHotel ? 'bi-house-door' : 'bi-building'}"></i> ${hotel.name}</h4>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="closeHotelDetailModal()">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <h6><i class="bi bi-geo-alt"></i> Адрес</h6>
+                                    <p class="mb-2">${hotel.address}</p>
+                                    <small class="text-muted">Координаты: ${hotel.lat.toFixed(6)}, ${hotel.lng.toFixed(6)}</small>
+                                </div>
+                                
+                                ${!isOurHotel ? `
+                                <div class="mb-3">
+                                    <h6><i class="bi bi-signpost"></i> Расстояние от нашего отеля</h6>
+                                    <p>${hotel.distance}</p>
+                                </div>
+                                ` : ''}
+                                
+                                <div class="mb-3">
+                                    <h6><i class="bi bi-star"></i> Услуги и удобства</h6>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <span class="badge bg-light text-dark">Wi-Fi</span>
+                                        <span class="badge bg-light text-dark">Парковка</span>
+                                        <span class="badge bg-light text-dark">Завтрак</span>
+                                        <span class="badge bg-light text-dark">Кондиционер</span>
+                                        <span class="badge bg-light text-dark">Тренажерный зал</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <div class="metric-value text-primary">
+                                            ${hotel.price.toLocaleString('ru-RU')} ₽
+                                        </div>
+                                        <small>Цена за ночь</small>
+                                        
+                                        ${!isOurHotel ? `
+                                        <div class="mt-3">
+                                            <span class="badge ${priceDiffClass}">${priceDiffText}</span>
+                                        </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                                
+                                <div class="card mt-3">
+                                    <div class="card-body text-center">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <h4 class="mb-0 me-2">${hotel.rating}</h4>
+                                            <div class="text-warning">
+                                                ${getRatingStars(hotel.rating)}
+                                            </div>
+                                        </div>
+                                        <small>Рейтинг</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6><i class="bi bi-graph-up"></i> Статистика</h6>
+                                        <div class="row text-center">
+                                            <div class="col-6">
+                                                <div class="metric-value">${Math.round(hotel.price * 0.9).toLocaleString('ru-RU')} ₽</div>
+                                                <small>Средняя цена</small>
+                                            </div>
+                                            <div class="col-6">
+                                                <div class="metric-value">${isOurHotel ? '78%' : '72%'}</div>
+                                                <small>Заполняемость</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6><i class="bi bi-calendar-check"></i> Доступность</h6>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Сегодня:</span>
+                                            <span class="badge bg-success">Свободно</span>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Завтра:</span>
+                                            <span class="badge bg-warning text-dark">2 номера</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        ${!isOurHotel ? `
+                        <div class="mt-4">
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary w-50" onclick="selectHotel('${hotel.id}'); closeHotelDetailModal()">
+                                    <i class="bi bi-plus-circle"></i> Добавить в анализ
+                                </button>
+                                <button class="btn btn-outline-info w-50" onclick="compareWithOurHotel('${hotel.id}')">
+                                    <i class="bi bi-arrow-left-right"></i> Сравнить
+                                </button>
+                            </div>
+                            <button class="btn btn-outline-danger w-100 mt-2" onclick="deleteCompetitor('${hotel.id}')">
+                                <i class="bi bi-trash"></i> Удалить конкурента
+                            </button>
+                        </div>
+                        ` : `
+                        <div class="mt-4">
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary w-50" onclick="openAddressModal(); closeHotelDetailModal()">
+                                    <i class="bi bi-geo-alt"></i> Изменить адрес
+                                </button>
+                                <button class="btn btn-outline-primary w-50" onclick="openHotelInfoModal(); closeHotelDetailModal()">
+                                    <i class="bi bi-pencil"></i> Редактировать
+                                </button>
+                            </div>
+                        </div>
+                        `}
+                    </div>
+                </div>
+            `;
+            
+            // Добавляем модальное окно на страницу
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = modalHtml;
+            document.body.appendChild(modalContainer);
+            
+            // Добавляем обработчик закрытия по клику на фон
+            const modalElement = document.getElementById('hotelDetailModal');
+            if (modalElement) {
+                modalElement.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeHotelDetailModal();
+                    }
+                });
+            }
+        }
+        
+        // Функция для закрытия модального окна
+        function closeHotelDetailModal() {
+            const modal = document.getElementById('hotelDetailModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        // Вспомогательная функция для получения звезд рейтинга
+        function getRatingStars(rating) {
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                if (i <= Math.floor(rating)) {
+                    stars += '<i class="bi bi-star-fill"></i>';
+                } else if (i - 0.5 <= rating) {
+                    stars += '<i class="bi bi-star-half"></i>';
+                } else {
+                    stars += '<i class="bi bi-star"></i>';
+                }
+            }
+            return stars;
+        }
+        
+        // Функция для вызова из попапа
+        function showHotelInfoModalFromPopup(hotelId) {
+            let hotel;
+            if (hotelId === 'our_hotel') {
+                hotel = ourHotelData;
+            } else {
+                hotel = allCompetitorsData.find(h => h.id === hotelId);
+            }
+            
+            if (hotel) {
+                // Закрываем попап
+                if (markers[hotelId]) {
+                    markers[hotelId].closePopup();
+                }
+                
+                // Показываем модальное окно
+                showHotelInfoModal(hotel);
+            }
+        }
+        
+        // Функция сравнения с нашим отелем
+        function compareWithOurHotel(competitorId) {
+            const competitor = allCompetitorsData.find(h => h.id === competitorId);
+            if (!competitor || !ourHotelData) return;
+            
+            const priceDiff = competitor.price - ourHotelData.price;
+            const ratingDiff = competitor.rating - ourHotelData.rating;
+            
+            let comparisonHtml = `
+                <div id="comparisonModal" class="modal-overlay" style="display: flex;">
+                    <div class="modal-content" style="max-width: 700px;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4><i class="bi bi-arrow-left-right"></i> Сравнение отелей</h4>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="closeComparisonModal()">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-center">${ourHotelData.name}</h5>
+                                        <div class="text-center mb-3">
+                                            <div class="metric-value text-primary">${ourHotelData.price.toLocaleString('ru-RU')} ₽</div>
+                                            <small>Цена за ночь</small>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <h4 class="mb-0 me-2">${ourHotelData.rating}</h4>
+                                                <div class="text-warning">
+                                                    ${getRatingStars(ourHotelData.rating)}
+                                                </div>
+                                            </div>
+                                            <small>Рейтинг</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-center">${competitor.name}</h5>
+                                        <div class="text-center mb-3">
+                                            <div class="metric-value text-primary">${competitor.price.toLocaleString('ru-RU')} ₽</div>
+                                            <small>Цена за ночь</small>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <h4 class="mb-0 me-2">${competitor.rating}</h4>
+                                                <div class="text-warning">
+                                                    ${getRatingStars(competitor.rating)}
+                                                </div>
+                                            </div>
+                                            <small>Рейтинг</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6><i class="bi bi-bar-chart"></i> Сравнительный анализ</h6>
+                                        <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>Параметр</th>
+                                                    <th>Наш отель</th>
+                                                    <th>Конкурент</th>
+                                                    <th>Разница</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>Цена</td>
+                                                    <td>${ourHotelData.price.toLocaleString('ru-RU')} ₽</td>
+                                                    <td>${competitor.price.toLocaleString('ru-RU')} ₽</td>
+                                                    <td>
+                                                        <span class="badge ${priceDiff > 0 ? 'bg-danger' : priceDiff < 0 ? 'bg-success' : 'bg-warning'}">
+                                                            ${priceDiff > 0 ? '+' : ''}${priceDiff} ₽
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Рейтинг</td>
+                                                    <td>${ourHotelData.rating}</td>
+                                                    <td>${competitor.rating}</td>
+                                                    <td>
+                                                        <span class="badge ${ratingDiff > 0 ? 'bg-danger' : ratingDiff < 0 ? 'bg-success' : 'bg-warning'}">
+                                                            ${ratingDiff > 0 ? '+' : ''}${ratingDiff.toFixed(1)}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Расстояние</td>
+                                                    <td>-</td>
+                                                    <td>${competitor.distance}</td>
+                                                    <td>-</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                        
+                                        <div class="mt-3">
+                                            <h6>Рекомендации:</h6>
+                                            <ul>
+                                                ${priceDiff > 500 ? `
+                                                <li>Конкурент значительно дороже. Рассмотрите возможность повышения цены на 5-10%</li>
+                                                ` : priceDiff < -500 ? `
+                                                <li>Конкурент значительно дешевле. Проверьте, не слишком ли высока ваша цена</li>
+                                                ` : `
+                                                <li>Цены сопоставимы. Ваша ценовая позиция оптимальна</li>
+                                                `}
+                                                
+                                                ${ratingDiff > 0.3 ? `
+                                                <li>У конкурента выше рейтинг. Проанализируйте отзывы гостей</li>
+                                                ` : ratingDiff < -0.3 ? `
+                                                <li>Ваш рейтинг выше. Используйте это в маркетинге</li>
+                                                ` : `
+                                                <li>Рейтинги сопоставимы. Уровень сервиса аналогичен</li>
+                                                `}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <button class="btn btn-primary w-100" onclick="selectHotel('${competitor.id}'); closeComparisonModal()">
+                                <i class="bi bi-plus-circle"></i> Добавить конкурента в анализ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Закрываем текущие модальные окна
+            closeHotelDetailModal();
+            
+            // Добавляем модальное окно сравнения
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = comparisonHtml;
+            document.body.appendChild(modalContainer);
+            
+            // Добавляем обработчик закрытия
+            const modalElement = document.getElementById('comparisonModal');
+            if (modalElement) {
+                modalElement.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeComparisonModal();
+                    }
+                });
+            }
+        }
+        
+        function closeComparisonModal() {
+            const modal = document.getElementById('comparisonModal');
+            if (modal) {
+                modal.remove();
+            }
         }
     </script>
 </body>
