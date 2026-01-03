@@ -60,6 +60,19 @@ class HotelInfoUpdateRequest(BaseModel):
     name: Optional[str] = None
 
 
+class NewCompetitorRequest(BaseModel):
+    name: str
+    address: str
+    price: float
+    rating: float = 4.0
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
+
+class DeleteCompetitorRequest(BaseModel):
+    competitor_id: str
+
+
 # Данные для карты (тестовые координаты)
 COMPETITORS_DATA = {
     "our_hotel": {
@@ -670,6 +683,16 @@ DASHBOARD_HTML = """
             background: #3a0ca3;
         }
         
+        .btn-success {
+            background: #51cf66 !important;
+            border-color: #51cf66 !important;
+        }
+        
+        .btn-success:hover {
+            background: #40c057 !important;
+            border-color: #40c057 !important;
+        }
+        
         .btn-edit-info {
             background: #ff6b6b;
         }
@@ -813,6 +836,86 @@ DASHBOARD_HTML = """
                             </button>
                             <button type="button" class="btn btn-primary" onclick="updateHotelInfo()">
                                 <i class="bi bi-check-lg"></i> Сохранить изменения
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Модальное окно добавления конкурента -->
+            <div id="addCompetitorModal" class="modal-overlay">
+                <div class="modal-content">
+                    <h4><i class="bi bi-plus-circle"></i> Добавить нового конкурента</h4>
+                    
+                    <form id="addCompetitorForm">
+                        <div class="edit-form-group">
+                            <label class="form-label">Название отеля *</label>
+                            <input type="text" class="form-control" id="competitorNameInput" 
+                                   placeholder="Например: Президент Отель" required>
+                        </div>
+                        
+                        <div class="edit-form-group">
+                            <label class="form-label">Адрес *</label>
+                            <div class="address-search">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="competitorAddressInput" 
+                                           placeholder="Например: Москва, ул. Тверская, 10"
+                                           onkeyup="searchCompetitorAddress(event)">
+                                    <button class="btn btn-primary" type="button" onclick="searchCompetitorAddress()">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
+                                <div id="competitorSearchResults" class="search-results">
+                                    <!-- Результаты поиска будут здесь -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="edit-form-group">
+                                    <label class="form-label">Цена за ночь (₽) *</label>
+                                    <div class="price-input-group">
+                                        <span class="price-symbol">₽</span>
+                                        <input type="number" class="form-control price-input" 
+                                               id="competitorPriceInput" min="1000" max="50000" step="100" 
+                                               value="5000" required>
+                                    </div>
+                                    <small class="text-muted">Цена должна быть в диапазоне 1000 - 50000 ₽</small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="edit-form-group">
+                                    <label class="form-label">Рейтинг *</label>
+                                    <div class="rating-slider-container">
+                                        <input type="range" class="form-range" id="competitorRatingInput" 
+                                               min="1" max="5" step="0.1" value="4.5">
+                                        <div class="rating-value">
+                                            <span id="competitorRatingValueDisplay">4.5</span> ★
+                                        </div>
+                                    </div>
+                                    <div class="rating-stars" id="competitorRatingStars">
+                                        <!-- Звезды будут сгенерированы JavaScript -->
+                                    </div>
+                                    <small class="text-muted">Перетащите ползунок для изменения рейтинга</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="selectedCompetitorAddressPreview" class="mb-3" style="display: none;">
+                            <div class="alert alert-info">
+                                <h6><i class="bi bi-check-circle"></i> Выбранный адрес:</h6>
+                                <p id="selectedCompetitorAddressText"></p>
+                                <small id="selectedCompetitorCoordinates" class="text-muted"></small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mt-4">
+                            <button type="button" class="btn btn-outline-secondary" onclick="closeAddCompetitorModal()">
+                                <i class="bi bi-x"></i> Отмена
+                            </button>
+                            <button type="submit" class="btn btn-success" id="addCompetitorBtn">
+                                <i class="bi bi-plus-lg"></i> Добавить конкурента
                             </button>
                         </div>
                     </form>
@@ -985,6 +1088,9 @@ DASHBOARD_HTML = """
                                 </button>
                                 <button class="btn-hotel-control btn-edit-info" onclick="openHotelInfoModal()">
                                     <i class="bi bi-pencil"></i> Редактировать отель
+                                </button>
+                                <button class="btn-hotel-control btn-success" onclick="openAddCompetitorModal()">
+                                    <i class="bi bi-plus-circle"></i> Добавить конкурента
                                 </button>
                             </div>
 
@@ -1204,6 +1310,7 @@ DASHBOARD_HTML = """
         let selectedAddress = null;
         let priceChart = null;
         let allCompetitorsData = [];
+        let selectedCompetitorAddress = null;
         
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
@@ -1222,6 +1329,10 @@ DASHBOARD_HTML = """
             
             document.getElementById('hotelInfoModal').addEventListener('click', function(e) {
                 if (e.target === this) closeHotelInfoModal();
+            });
+            
+            document.getElementById('addCompetitorModal').addEventListener('click', function(e) {
+                if (e.target === this) closeAddCompetitorModal();
             });
             
             // Закрытие модальных окон по Escape
@@ -1628,6 +1739,295 @@ DASHBOARD_HTML = """
             document.getElementById('ratingValueDisplay').textContent = rating.toFixed(1);
             updateRatingStars(rating);
         });
+        
+        // ===== ФУНКЦИИ ДЛЯ ДОБАВЛЕНИЯ КОНКУРЕНТА =====
+
+        function openAddCompetitorModal() {
+            document.getElementById('addCompetitorModal').style.display = 'flex';
+            document.getElementById('competitorNameInput').focus();
+            initCompetitorRatingStars();
+            resetCompetitorModal();
+        }
+        
+        function closeAddCompetitorModal() {
+            document.getElementById('addCompetitorModal').style.display = 'none';
+            resetCompetitorModal();
+        }
+        
+        function resetCompetitorModal() {
+            document.getElementById('competitorNameInput').value = '';
+            document.getElementById('competitorAddressInput').value = '';
+            document.getElementById('competitorPriceInput').value = '5000';
+            document.getElementById('competitorRatingInput').value = '4.5';
+            document.getElementById('competitorRatingValueDisplay').textContent = '4.5';
+            document.getElementById('competitorSearchResults').innerHTML = '';
+            document.getElementById('competitorSearchResults').style.display = 'none';
+            document.getElementById('selectedCompetitorAddressPreview').style.display = 'none';
+            selectedCompetitorAddress = null;
+            
+            // Обновляем звезды рейтинга
+            updateCompetitorRatingStars(4.5);
+        }
+        
+        function initCompetitorRatingStars() {
+            const ratingStars = document.getElementById('competitorRatingStars');
+            if (!ratingStars) return;
+            
+            ratingStars.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const star = document.createElement('i');
+                star.className = 'bi bi-star-fill star-icon';
+                ratingStars.appendChild(star);
+            }
+            
+            // Обработчик изменения ползунка рейтинга
+            document.getElementById('competitorRatingInput').addEventListener('input', function(e) {
+                const rating = parseFloat(e.target.value);
+                document.getElementById('competitorRatingValueDisplay').textContent = rating.toFixed(1);
+                updateCompetitorRatingStars(rating);
+            });
+        }
+        
+        function updateCompetitorRatingStars(rating) {
+            const stars = document.querySelectorAll('#competitorRatingStars .star-icon');
+            if (!stars.length) return;
+            
+            stars.forEach((star, index) => {
+                if (index < Math.floor(rating)) {
+                    star.className = 'bi bi-star-fill star-icon';
+                } else if (index < rating) {
+                    star.className = 'bi bi-star-half star-icon';
+                } else {
+                    star.className = 'bi bi-star star-icon';
+                }
+            });
+        }
+        
+        async function searchCompetitorAddress(event = null) {
+            const query = document.getElementById('competitorAddressInput').value.trim();
+            
+            if (!query || query.length < 2) {
+                document.getElementById('competitorSearchResults').style.display = 'none';
+                return;
+            }
+            
+            // Если нажата Enter - сразу ищем
+            if (event && event.key === 'Enter') {
+                await performCompetitorGeocode(query);
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/search-address', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+                
+                const data = await response.json();
+                const resultsDiv = document.getElementById('competitorSearchResults');
+                resultsDiv.innerHTML = '';
+                
+                if (data.suggestions && data.suggestions.length > 0) {
+                    data.suggestions.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = 'search-result-item';
+                        div.textContent = item.address;
+                        div.onclick = () => selectCompetitorAddressFromList(item.address);
+                        resultsDiv.appendChild(div);
+                    });
+                    resultsDiv.style.display = 'block';
+                } else {
+                    showCompetitorLocalExamples(query, resultsDiv);
+                }
+            } catch (error) {
+                console.error('Ошибка поиска адреса:', error);
+                const resultsDiv = document.getElementById('competitorSearchResults');
+                showCompetitorLocalExamples(query, resultsDiv);
+            }
+        }
+        
+        function showCompetitorLocalExamples(query, resultsDiv) {
+            const examples = [
+                "Москва, Красная площадь, 1",
+                "Москва, Тверская улица, 10",
+                "Москва, Арбат, 25",
+                "Москва, Ленинский проспект, 90",
+                "Москва, Пресненская набережная, 12",
+                "Санкт-Петербург, Невский проспект, 1",
+                "Екатеринбург, улица Ленина, 1"
+            ];
+            
+            const results = examples.filter(addr => 
+                addr.toLowerCase().includes(query.toLowerCase())
+            );
+            
+            resultsDiv.innerHTML = '';
+            
+            if (results.length > 0) {
+                results.forEach(addr => {
+                    const div = document.createElement('div');
+                    div.className = 'search-result-item';
+                    div.textContent = addr;
+                    div.onclick = () => selectCompetitorAddressFromList(addr);
+                    resultsDiv.appendChild(div);
+                });
+                resultsDiv.style.display = 'block';
+            } else {
+                resultsDiv.style.display = 'none';
+            }
+        }
+        
+        async function performCompetitorGeocode(query) {
+            try {
+                const response = await fetch('/api/geocode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ address: query })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    selectCompetitorAddressFromResult(result);
+                } else {
+                    alert('Адрес не найден: ' + (result.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                console.error('Ошибка геокодирования:', error);
+                alert('Ошибка при поиске адреса. Проверьте подключение к интернету.');
+            }
+        }
+        
+        function selectCompetitorAddressFromList(address) {
+            performCompetitorGeocode(address);
+        }
+        
+        function selectCompetitorAddressFromResult(result) {
+            selectedCompetitorAddress = result;
+            
+            document.getElementById('selectedCompetitorAddressText').textContent = result.address;
+            document.getElementById('selectedCompetitorCoordinates').textContent = `Координаты: ${result.coordinates}`;
+            document.getElementById('selectedCompetitorAddressPreview').style.display = 'block';
+            document.getElementById('competitorSearchResults').style.display = 'none';
+        }
+        
+        // Обработчик формы добавления конкурента
+        document.getElementById('addCompetitorForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            await addNewCompetitor();
+        });
+        
+        async function addNewCompetitor() {
+            const name = document.getElementById('competitorNameInput').value.trim();
+            const addressInput = document.getElementById('competitorAddressInput').value.trim();
+            const price = parseFloat(document.getElementById('competitorPriceInput').value);
+            const rating = parseFloat(document.getElementById('competitorRatingInput').value);
+            
+            // Валидация
+            if (!name) {
+                alert('Пожалуйста, введите название отеля');
+                return;
+            }
+            
+            if (!addressInput && !selectedCompetitorAddress) {
+                alert('Пожалуйста, введите адрес или выберите из списка');
+                return;
+            }
+            
+            const address = selectedCompetitorAddress ? selectedCompetitorAddress.address : addressInput;
+            
+            if (isNaN(price) || price < 1000 || price > 50000) {
+                alert('Цена должна быть в диапазоне 1000 - 50000 ₽');
+                return;
+            }
+            
+            if (isNaN(rating) || rating < 1 || rating > 5) {
+                alert('Рейтинг должен быть в диапазоне 1.0 - 5.0');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/competitors/add', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        address: address,
+                        price: price,
+                        rating: rating
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Добавляем нового конкурента в локальные данные
+                    allCompetitorsData.push(result.competitor);
+                    
+                    // Применяем фильтры (новый конкурент появится на карте и в списке)
+                    applyFilters();
+                    
+                    alert('Конкурент успешно добавлен!');
+                    closeAddCompetitorModal();
+                    
+                } else {
+                    alert('Ошибка при добавлении конкурента: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Ошибка добавления конкурента:', error);
+                alert('Ошибка при добавлении конкурента');
+            }
+        }
+        
+        // Функция удаления конкурента
+        async function deleteCompetitor(competitorId) {
+            if (!confirm('Вы уверены, что хотите удалить этого конкурента?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/competitors/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        competitor_id: competitorId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Удаляем конкурента из локальных данных
+                    allCompetitorsData = allCompetitorsData.filter(hotel => hotel.id !== competitorId);
+                    
+                    // Удаляем из выбранных, если был выбран
+                    if (selectedHotels.has(competitorId)) {
+                        selectedHotels.delete(competitorId);
+                        updateSelectedList();
+                    }
+                    
+                    // Применяем фильтры (конкурент исчезнет с карты и из списка)
+                    applyFilters();
+                    
+                    alert('Конкурент успешно удален!');
+                    
+                } else {
+                    alert('Ошибка при удалении конкурента: ' + result.message);
+                }
+            } catch (error) {
+                console.error('Ошибка удаления конкурента:', error);
+                alert('Ошибка при удалении конкурента');
+            }
+        }
         
         // ===== ОСТАЛЬНЫЕ ФУНКЦИИ =====
 
@@ -2046,7 +2446,7 @@ DASHBOARD_HTML = """
                 const col = document.createElement('div');
                 col.className = 'col-md-4 mb-3';
                 col.innerHTML = `
-                    <div class="card ${hotelCardClass} ${isSelected ? 'selected' : ''}" id="hotel-${hotel.id}" onclick="selectHotel('${hotel.id}')">
+                    <div class="card ${hotelCardClass} ${isSelected ? 'selected' : ''}" id="hotel-${hotel.id}">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
@@ -2074,9 +2474,21 @@ DASHBOARD_HTML = """
                                 </div>
                             </div>
                             <div class="mt-3">
-                                <button class="btn btn-sm ${isOurHotel ? 'btn-outline-primary' : 'btn-outline-secondary'} w-100" onclick="focusOnMap('${hotel.id}', event)">
-                                    <i class="bi bi-map"></i> Показать на карте
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm ${isOurHotel ? 'btn-outline-primary' : 'btn-outline-secondary'} w-50" onclick="focusOnMap('${hotel.id}', event)">
+                                        <i class="bi bi-map"></i> На карте
+                                    </button>
+                                    ${!isOurHotel ? `
+                                    <button class="btn btn-sm btn-outline-danger w-50" onclick="deleteCompetitor('${hotel.id}', event)">
+                                        <i class="bi bi-trash"></i> Удалить
+                                    </button>
+                                    ` : ''}
+                                </div>
+                                ${!isOurHotel ? `
+                                <button class="btn btn-sm ${isSelected ? 'btn-outline-primary' : 'btn-outline-success'} w-100 mt-2" onclick="selectHotel('${hotel.id}', event)">
+                                    <i class="bi ${isSelected ? 'bi-check-circle' : 'bi-plus-circle'}"></i> ${isSelected ? 'Убрать' : 'Выбрать'}
                                 </button>
+                                ` : ''}
                             </div>
                         </div>
                     </div>
@@ -2399,6 +2811,7 @@ async def api_info():
             "health": "/health"
         }
     }
+
 
 @app.get("/health")
 async def health_check():
@@ -2733,6 +3146,103 @@ async def update_hotel_info(request: HotelInfoUpdateRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/api/competitors/add")
+async def add_competitor(request: NewCompetitorRequest):
+    """Добавление нового конкурента"""
+    try:
+        # Если координаты не переданы, геокодируем адрес
+        if request.lat is None or request.lng is None:
+            geocode_result = await geocode_address(request.address)
+            if not geocode_result["success"]:
+                raise HTTPException(status_code=400, detail=f"Не удалось найти адрес: {geocode_result.get('error')}")
+            lat = geocode_result["lat"]
+            lng = geocode_result["lng"]
+        else:
+            lat = request.lat
+            lng = request.lng
+
+        # Рассчитываем расстояние до нашего отеля
+        our_coords = {
+            "lat": COMPETITORS_DATA["our_hotel"]["lat"],
+            "lng": COMPETITORS_DATA["our_hotel"]["lng"]
+        }
+        competitor_coords = {"lat": lat, "lng": lng}
+        distance = await calculate_distance(our_coords, competitor_coords)
+
+        # Генерируем уникальный ID
+        import uuid
+        competitor_id = f"hotel_{str(uuid.uuid4())[:8]}"
+
+        # Определяем цвет на основе разницы цен
+        price_diff = request.price - COMPETITORS_DATA["our_hotel"]["price"]
+        if price_diff > 500:
+            color = "#ef476f"  # Красный для дороже
+        elif price_diff < -500:
+            color = "#06d6a0"  # Зеленый для дешевле
+        else:
+            color = "#ffd166"  # Желтый для примерно одинаково
+
+        # Создаем нового конкурента
+        new_competitor = {
+            "id": competitor_id,
+            "name": request.name,
+            "lat": lat,
+            "lng": lng,
+            "price": request.price,
+            "rating": request.rating,
+            "color": color,
+            "address": request.address,
+            "distance": distance,
+            "selected": False
+        }
+
+        # Добавляем в список
+        COMPETITORS_DATA["competitors"].append(new_competitor)
+
+        return {
+            "success": True,
+            "message": "Конкурент успешно добавлен",
+            "competitor": new_competitor,
+            "added_at": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/competitors/delete")
+async def delete_competitor(request: DeleteCompetitorRequest):
+    """Удаление конкурента"""
+    try:
+        # Ищем конкурента
+        competitor_index = None
+        for i, competitor in enumerate(COMPETITORS_DATA["competitors"]):
+            if competitor["id"] == request.competitor_id:
+                competitor_index = i
+                break
+
+        if competitor_index is None:
+            raise HTTPException(status_code=404, detail="Конкурент не найден")
+
+        # Удаляем конкурента
+        deleted_competitor = COMPETITORS_DATA["competitors"].pop(competitor_index)
+
+        return {
+            "success": True,
+            "message": "Конкурент успешно удален",
+            "competitor": deleted_competitor,
+            "deleted_at": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/competitors/all")
+async def get_all_competitors():
+    """Получение всех конкурентов (с нашим отелем)"""
+    return COMPETITORS_DATA
 
 
 if __name__ == "__main__":
