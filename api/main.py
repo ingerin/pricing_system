@@ -1044,7 +1044,7 @@ DASHBOARD_HTML = """
                                     <select class="form-select" id="distanceFilter">
                                         <option value="5" selected>Все</option>
                                         <option value="2">До 2 км</option>
-                                        <option value="1" selected>До 1 км</option>
+                                        <option value="1">До 1 км</option>
                                         <option value="0.5">До 500 м</option>
                                     </select>
                                 </div>
@@ -1692,7 +1692,7 @@ DASHBOARD_HTML = """
                 }
                 markers = {};
         
-                // Добавляем наш отель НЕЗАВИСИМО от фильтров
+                // Добавляем наш отель
                 addOurHotel(ourHotelData);
                 
                 // Применяем фильтры для конкурентов
