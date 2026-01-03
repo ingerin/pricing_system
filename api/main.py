@@ -111,7 +111,7 @@ COMPETITORS_DATA = {
             "lng": 37.6250,
             "price": 5200,
             "rating": 4.3,
-            "color": "#118ab2",
+            "color": "#06d6a0",
             "address": "ул. Лубянка, 5",
             "distance": "0.6 км",
             "selected": False
