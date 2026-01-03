@@ -974,11 +974,15 @@ DASHBOARD_HTML = """
                                 </div>
                                 <div class="legend-item">
                                     <div class="legend-color" style="background-color: #ef476f;"></div>
-                                    <span>Дороже нас</span>
+                                    <span>Дороже нас (на 500+ ₽)</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background-color: #ffd166;"></div>
+                                    <span>Примерно одинаково (±500 ₽)</span>
                                 </div>
                                 <div class="legend-item">
                                     <div class="legend-color" style="background-color: #06d6a0;"></div>
-                                    <span>Дешевле нас</span>
+                                    <span>Дешевле нас (на 500+ ₽)</span>
                                 </div>
                             </div>
                         </div>
@@ -1367,7 +1371,7 @@ DASHBOARD_HTML = """
                     alert('Адрес успешно изменен!');
                     closeAddressModal();
 
-                    // Перезагружаем данные о конкурентах
+                    // Перезагружаем данные о конкурентах (расстояния пересчитаются на сервере)
                     loadMapData();
 
                 } else {
@@ -1506,19 +1510,35 @@ DASHBOARD_HTML = """
                     ourHotelData.price = price;
                     ourHotelData.rating = rating;
                     
-                    // Обновляем маркер на карте
+                    // Обновляем маркер нашего отеля
                     if (markers.our_hotel) {
                         map.removeLayer(markers.our_hotel);
                     }
                     addOurHotel(ourHotelData);
                     
+                    // Удаляем и перерисовываем все маркеры конкурентов с новыми цветами
+                    Object.keys(markers).forEach(key => {
+                        if (key !== 'our_hotel') {
+                            map.removeLayer(markers[key]);
+                        }
+                    });
+                    
+                    // Загружаем данные конкурентов и перерисовываем их
+                    const competitorsResponse = await fetch('/api/competitors/map');
+                    const competitorsData = await competitorsResponse.json();
+                    
+                    competitorsData.competitors.forEach(hotel => {
+                        addCompetitorMarker(hotel);
+                    });
+                    
                     // Обновляем отображение
                     updateOurHotelDisplay();
                     
                     // Перерисовываем список отелей
-                    const response = await fetch('/api/competitors/map');
-                    const data = await response.json();
-                    renderHotelsList(data.competitors);
+                    renderHotelsList(competitorsData.competitors);
+                    
+                    // Обновляем статистику
+                    updateStats(competitorsData.competitors);
                     
                     alert('Информация об отеле успешно обновлена!');
                     closeHotelInfoModal();
@@ -1580,6 +1600,16 @@ DASHBOARD_HTML = """
                 const data = await response.json();
 
                 ourHotelData = data.our_hotel;
+                // Устанавливаем глобальную переменную ourHotelPrice для совместимости
+                ourHotelPrice = ourHotelData.price;
+        
+                // Очищаем все маркеры
+                if (map) {
+                    Object.keys(markers).forEach(key => {
+                        map.removeLayer(markers[key]);
+                    }
+                }
+                markers = {};
 
                 // Добавляем наш отель
                 addOurHotel(ourHotelData);
@@ -1590,18 +1620,17 @@ DASHBOARD_HTML = """
                 });
 
                 // Обновляем статистику
-                updateStats(data.competitors);
+        updateStats(data.competitors);
+        // Показываем список отелей
+        renderHotelsList(data.competitors);
 
-                // Показываем список отелей
-                renderHotelsList(data.competitors);
+        // Обновляем отображение нашего отеля
+        updateOurHotelDisplay();
 
-                // Обновляем отображение нашего отеля
-                updateOurHotelDisplay();
-
-            } catch (error) {
-                console.error('Ошибка загрузки данных карты:', error);
-            }
-        }
+    } catch (error) {
+        console.error('Ошибка загрузки данных карты:', error);
+    }
+}
 
         // Добавить наш отель на карту
         function addOurHotel(hotel) {
@@ -1646,22 +1675,28 @@ DASHBOARD_HTML = """
 
         // Добавить маркер конкурента
         function addCompetitorMarker(hotel) {
-            const priceDiff = hotel.price - ourHotelPrice;
+            // Используем ourHotelData.price вместо глобальной переменной ourHotelPrice
+            const priceDiff = hotel.price - ourHotelData.price;
             let priceClass = '';
+            let markerColor = '';
 
+            // Определяем цвет маркера в зависимости от разницы цен
             if (priceDiff > 500) {
                 priceClass = 'price-higher';
+                markerColor = '#ef476f'; // Красный для дороже
             } else if (priceDiff < -500) {
                 priceClass = 'price-lower';
+                markerColor = '#06d6a0'; // Зеленый для дешевле
             } else {
                 priceClass = 'price-same';
+                markerColor = '#ffd166'; // Желтый для примерно одинаково
             }
-
+        
             const icon = L.divIcon({
                 className: 'custom-icon',
                 html: `
                     <div style="
-                        background-color: ${hotel.color};
+                        background-color: ${markerColor};
                         width: 35px;
                         height: 35px;
                         border-radius: 50%;
@@ -1796,15 +1831,32 @@ DASHBOARD_HTML = """
                 avgCompetitorPriceElement.textContent = Math.round(avgPrice).toLocaleString('ru-RU') + ' ₽';
             }
             
-            // Рассчитываем позицию на рынке
-            const sortedPrices = [...competitors.map(h => h.price), ourHotelData.price].sort((a, b) => a - b);
-            const position = sortedPrices.indexOf(ourHotelData.price) + 1;
+            // Рассчитываем позицию на рынке (сортировка по возрастанию цены)
+            const allHotels = [...competitors, ourHotelData];
+            allHotels.sort((a, b) => a.price - b.price);
+            const position = allHotels.findIndex(hotel => hotel.id === 'our_hotel') + 1;
+            
             const marketPositionElement = document.getElementById('marketPositionStat');
             if (marketPositionElement) {
                 marketPositionElement.textContent = `#${position}`;
             }
         }
-
+        
+        // Функция для перерисовки всех маркеров конкурентов
+        function redrawAllCompetitorMarkers(competitors) {
+            // Удаляем все маркеры конкурентов
+            Object.keys(markers).forEach(key => {
+                if (key !== 'our_hotel' && markers[key]) {
+                    map.removeLayer(markers[key]);
+                }
+            });
+            
+            // Добавляем маркеры конкурентов с новыми цветами
+            competitors.forEach(hotel => {
+                addCompetitorMarker(hotel);
+            });
+        }
+        
         // Показать список отелей
         function renderHotelsList(competitors) {
             const container = document.getElementById('hotelsList');
@@ -1813,7 +1865,8 @@ DASHBOARD_HTML = """
             container.innerHTML = '';
 
             competitors.forEach(hotel => {
-                const priceDiff = hotel.price - ourHotelPrice;
+                // Используем ourHotelData.price вместо ourHotelPrice
+                const priceDiff = hotel.price - ourHotelData.price;
                 let priceBadgeClass = '';
                 let priceBadgeText = '';
 
