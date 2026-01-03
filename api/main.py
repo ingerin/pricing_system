@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Any
 import logging
 import os
 from datetime import datetime
+import json
 
 app = FastAPI(title="Hotel Dynamic Pricing API", version="1.0.0")
 
@@ -43,6 +44,83 @@ class ReportRequest(BaseModel):
     format: str = "pdf"
 
 
+# Данные для карты (тестовые координаты)
+COMPETITORS_DATA = {
+    "our_hotel": {
+        "id": "our_hotel",
+        "name": "Наш отель (Central Plaza)",
+        "lat": 55.7558,
+        "lng": 37.6173,
+        "price": 5500,
+        "rating": 4.5,
+        "color": "#4361ee",
+        "address": "Красная площадь, 1",
+        "distance": "0 км"
+    },
+    "competitors": [
+        {
+            "id": "hotel1",
+            "name": "Luxury Hotel Moscow",
+            "lat": 55.7517,
+            "lng": 37.6178,
+            "price": 6200,
+            "rating": 4.8,
+            "color": "#ef476f",
+            "address": "ул. Тверская, 15",
+            "distance": "0.5 км",
+            "selected": False
+        },
+        {
+            "id": "hotel2",
+            "name": "Business Inn",
+            "lat": 55.7570,
+            "lng": 37.6150,
+            "price": 4800,
+            "rating": 4.2,
+            "color": "#06d6a0",
+            "address": "ул. Большая Дмитровка, 10",
+            "distance": "0.8 км",
+            "selected": False
+        },
+        {
+            "id": "hotel3",
+            "name": "City Center Hotel",
+            "lat": 55.7600,
+            "lng": 37.6200,
+            "price": 5500,
+            "rating": 4.5,
+            "color": "#ffd166",
+            "address": "ул. Петровка, 25",
+            "distance": "0.7 км",
+            "selected": False
+        },
+        {
+            "id": "hotel4",
+            "name": "Comfort Stay",
+            "lat": 55.7500,
+            "lng": 37.6250,
+            "price": 5200,
+            "rating": 4.3,
+            "color": "#118ab2",
+            "address": "ул. Лубянка, 5",
+            "distance": "0.6 км",
+            "selected": False
+        },
+        {
+            "id": "hotel5",
+            "name": "Premium Suites",
+            "lat": 55.7630,
+            "lng": 37.6100,
+            "price": 7500,
+            "rating": 4.9,
+            "color": "#073b4c",
+            "address": "ул. Воздвиженка, 3",
+            "distance": "1.2 км",
+            "selected": False
+        }
+    ]
+}
+
 # ===== HTML ИНТЕРФЕЙС =====
 
 # HTML шаблон для дашборда
@@ -55,6 +133,7 @@ DASHBOARD_HTML = """
     <title>🏨 Hotel Pricing Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
@@ -115,6 +194,113 @@ DASHBOARD_HTML = """
             display: none;
             text-align: center;
             padding: 50px;
+        }
+
+        /* Стили для карты */
+        #competitorsMap {
+            height: 400px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #dee2e6;
+        }
+
+        .map-container {
+            position: relative;
+        }
+
+        .map-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 5px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+            font-size: 12px;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-right: 8px;
+            border: 2px solid white;
+        }
+
+        .hotel-card {
+            transition: all 0.3s;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .hotel-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .hotel-card.selected {
+            border-color: #4361ee;
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+
+        .price-badge {
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 10px;
+        }
+
+        .price-higher {
+            background-color: #ff6b6b;
+            color: white;
+        }
+
+        .price-lower {
+            background-color: #51cf66;
+            color: white;
+        }
+
+        .price-same {
+            background-color: #ffd43b;
+            color: #000;
+        }
+
+        .selected-hotels-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .selected-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            border-left: 4px solid #4361ee;
+        }
+
+        .filter-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
         }
     </style>
 </head>
@@ -281,35 +467,114 @@ DASHBOARD_HTML = """
 
             <!-- Вкладка Конкуренты -->
             <div id="competitorsTab" class="tab-content" style="display: none;">
-                <div class="card">
-                    <div class="card-body">
-                        <h4 class="card-title"><i class="bi bi-graph-up"></i> Анализ конкурентов</h4>
-
-                        <div class="mb-3">
-                            <div class="input-group">
-                                <input type="text" class="form-control" placeholder="Поиск конкурентов...">
-                                <button class="btn btn-primary" onclick="searchCompetitors()">
-                                    <i class="bi bi-search"></i> Найти
-                                </button>
+                <div class="row">
+                    <div class="col-md-8">
+                        <!-- Карта -->
+                        <div class="map-container">
+                            <div id="competitorsMap"></div>
+                            <div class="map-controls">
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-outline-primary" onclick="zoomIn()">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                    <button class="btn btn-outline-primary" onclick="zoomOut()">
+                                        <i class="bi bi-dash"></i>
+                                    </button>
+                                    <button class="btn btn-outline-primary" onclick="resetView()">
+                                        <i class="bi bi-geo-alt"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="legend">
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background-color: #4361ee;"></div>
+                                    <span>Наш отель</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background-color: #ef476f;"></div>
+                                    <span>Дороже нас</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background-color: #06d6a0;"></div>
+                                    <span>Дешевле нас</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Отель</th>
-                                        <th>Цена</th>
-                                        <th>Рейтинг</th>
-                                        <th>Действия</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="competitorsTable">
-                                    <!-- Данные будут загружены -->
-                                </tbody>
-                            </table>
+                        <!-- Фильтры -->
+                        <div class="filter-panel">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label class="form-label">Ценовой диапазон</label>
+                                    <input type="range" class="form-range" id="priceFilter" min="3000" max="10000" value="10000">
+                                    <small>До: <span id="priceFilterValue">10,000 ₽</span></small>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Минимальный рейтинг</label>
+                                    <select class="form-select" id="ratingFilter">
+                                        <option value="0">Все</option>
+                                        <option value="4">4.0+</option>
+                                        <option value="4.5">4.5+</option>
+                                        <option value="4.7">4.7+</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Расстояние</label>
+                                    <select class="form-select" id="distanceFilter">
+                                        <option value="5">Все</option>
+                                        <option value="2">До 2 км</option>
+                                        <option value="1" selected>До 1 км</option>
+                                        <option value="0.5">До 500 м</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
+
+                    <div class="col-md-4">
+                        <!-- Выбранные отели -->
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="bi bi-check2-circle"></i> Выбранные отели
+                                    <span class="badge bg-primary" id="selectedCount">0</span>
+                                </h5>
+                                <div class="selected-hotels-list" id="selectedList">
+                                    <p class="text-muted text-center">Выберите отели на карте</p>
+                                </div>
+                                <div class="mt-2">
+                                    <button class="btn btn-success w-100" id="analyzeBtn" disabled onclick="analyzeSelected()">
+                                        <i class="bi bi-graph-up"></i> Анализировать выбранные
+                                    </button>
+                                    <button class="btn btn-outline-danger w-100 mt-2" onclick="clearSelected()">
+                                        <i class="bi bi-trash"></i> Очистить выбор
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Статистика -->
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="bi bi-bar-chart"></i> Статистика</h5>
+                                <div class="row text-center">
+                                    <div class="col-6">
+                                        <div class="metric-value" id="statsAvgPrice">5,540 ₽</div>
+                                        <small>Средняя цена</small>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="metric-value" id="statsTotal">5</div>
+                                        <small>Всего отелей</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Список всех отелей -->
+                <div class="row mt-4" id="hotelsList">
+                    <!-- Отели будут загружены здесь -->
                 </div>
             </div>
 
@@ -377,49 +642,359 @@ DASHBOARD_HTML = """
         </div>
     </div>
 
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // Глобальные переменные
+        let map = null;
+        let markers = {};
+        let selectedHotels = new Set();
+        let ourHotelPrice = 5500;
+
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
             loadDashboardData();
             updateTime();
             checkApiStatus();
-            setInterval(updateTime, 60000); // Обновлять время каждую минуту
+            setInterval(updateTime, 60000);
         });
 
         // Показать вкладку
         function showTab(tabName) {
-            // Скрыть все вкладки
             document.querySelectorAll('.tab-content').forEach(tab => {
                 tab.style.display = 'none';
             });
-
-            // Убрать активные классы
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
             });
-
-            // Показать выбранную вкладку
             document.getElementById(tabName + 'Tab').style.display = 'block';
-
-            // Активировать кнопку
             event.target.classList.add('active');
 
-            // Загрузить данные для вкладки
             if (tabName === 'competitors') {
-                loadCompetitors();
-            } else if (tabName === 'reports') {
-                loadReports();
+                setTimeout(initMap, 100);
             }
         }
 
-        // Обновить время
+        // Инициализация карты
+        function initMap() {
+            if (map) return;
+
+            // Центр Москвы
+            map = L.map('competitorsMap').setView([55.7558, 37.6173], 14);
+
+            // Добавляем слой карты
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            // Загружаем данные
+            loadMapData();
+        }
+
+        // Загрузка данных для карты
+        async function loadMapData() {
+            try {
+                const response = await fetch('/api/competitors/map');
+                const data = await response.json();
+
+                // Добавляем наш отель
+                addOurHotel(data.our_hotel);
+
+                // Добавляем конкурентов
+                data.competitors.forEach(hotel => {
+                    addCompetitorMarker(hotel);
+                });
+
+                // Обновляем статистику
+                updateStats(data.competitors);
+
+                // Показываем список отелей
+                renderHotelsList(data.competitors);
+
+            } catch (error) {
+                console.error('Ошибка загрузки данных карты:', error);
+            }
+        }
+
+        // Добавить наш отель на карту
+        function addOurHotel(hotel) {
+            const icon = L.divIcon({
+                className: 'custom-icon',
+                html: `
+                    <div style="
+                        background-color: ${hotel.color};
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        border: 3px solid white;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: white;
+                        font-size: 20px;
+                    ">
+                        <i class="bi bi-house-door"></i>
+                    </div>
+                `,
+                iconSize: [40, 40]
+            });
+
+            const marker = L.marker([hotel.lat, hotel.lng], { icon: icon })
+                .addTo(map)
+                .bindPopup(`
+                    <div style="min-width: 200px;">
+                        <h6><b>${hotel.name}</b></h6>
+                        <p><i class="bi bi-geo-alt"></i> ${hotel.address}</p>
+                        <p><i class="bi bi-cash"></i> <b>${hotel.price.toLocaleString('ru-RU')} ₽</b></p>
+                        <p><i class="bi bi-star"></i> ${hotel.rating} ★</p>
+                    </div>
+                `);
+
+            markers[hotel.id] = marker;
+        }
+
+        // Добавить маркер конкурента
+        function addCompetitorMarker(hotel) {
+            const priceDiff = hotel.price - ourHotelPrice;
+            let priceClass = '';
+
+            if (priceDiff > 500) {
+                priceClass = 'price-higher';
+            } else if (priceDiff < -500) {
+                priceClass = 'price-lower';
+            } else {
+                priceClass = 'price-same';
+            }
+
+            const icon = L.divIcon({
+                className: 'custom-icon',
+                html: `
+                    <div style="
+                        background-color: ${hotel.color};
+                        width: 35px;
+                        height: 35px;
+                        border-radius: 50%;
+                        border: 2px solid white;
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: white;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                    " onclick="selectHotel('${hotel.id}', event)">
+                        <i class="bi bi-building"></i>
+                    </div>
+                `,
+                iconSize: [35, 35]
+            });
+
+            const marker = L.marker([hotel.lat, hotel.lng], { icon: icon })
+                .addTo(map)
+                .bindPopup(`
+                    <div style="min-width: 200px;">
+                        <h6><b>${hotel.name}</b></h6>
+                        <p><i class="bi bi-geo-alt"></i> ${hotel.address}</p>
+                        <p><i class="bi bi-signpost"></i> ${hotel.distance} от нас</p>
+                        <p><i class="bi bi-cash"></i> <b>${hotel.price.toLocaleString('ru-RU')} ₽</b></p>
+                        <p><i class="bi bi-star"></i> ${hotel.rating} ★</p>
+                        <p>Разница: <span class="badge ${priceClass}">${priceDiff > 0 ? '+' : ''}${priceDiff} ₽</span></p>
+                        <button class="btn btn-sm btn-primary w-100 mt-2" onclick="selectHotel('${hotel.id}')">
+                            <i class="bi bi-plus-circle"></i> Выбрать для анализа
+                        </button>
+                    </div>
+                `);
+
+            markers[hotel.id] = marker;
+        }
+
+        // Выбрать отель
+        function selectHotel(hotelId, event = null) {
+            if (event) event.stopPropagation();
+
+            const hotelCard = document.getElementById(`hotel-${hotelId}`);
+
+            if (selectedHotels.has(hotelId)) {
+                selectedHotels.delete(hotelId);
+                if (hotelCard) hotelCard.classList.remove('selected');
+            } else {
+                selectedHotels.add(hotelId);
+                if (hotelCard) hotelCard.classList.add('selected');
+            }
+
+            updateSelectedList();
+        }
+
+        // Обновить список выбранных
+        function updateSelectedList() {
+            const list = document.getElementById('selectedList');
+            const count = document.getElementById('selectedCount');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+
+            count.textContent = selectedHotels.size;
+            analyzeBtn.disabled = selectedHotels.size === 0;
+
+            if (selectedHotels.size === 0) {
+                list.innerHTML = '<p class="text-muted text-center">Выберите отели на карте</p>';
+                return;
+            }
+
+            list.innerHTML = '';
+            selectedHotels.forEach(hotelId => {
+                // В реальном приложении здесь был бы запрос к API
+                const hotel = {
+                    id: hotelId,
+                    name: hotelId === 'hotel1' ? 'Luxury Hotel Moscow' : 
+                          hotelId === 'hotel2' ? 'Business Inn' :
+                          hotelId === 'hotel3' ? 'City Center Hotel' :
+                          hotelId === 'hotel4' ? 'Comfort Stay' : 'Premium Suites',
+                    price: hotelId === 'hotel1' ? 6200 : 
+                          hotelId === 'hotel2' ? 4800 :
+                          hotelId === 'hotel3' ? 5500 :
+                          hotelId === 'hotel4' ? 5200 : 7500
+                };
+
+                const item = document.createElement('div');
+                item.className = 'selected-item';
+                item.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">${hotel.name}</h6>
+                            <small class="text-muted">${hotel.price.toLocaleString('ru-RU')} ₽</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" onclick="selectHotel('${hotelId}')">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // Анализировать выбранные
+        function analyzeSelected() {
+            if (selectedHotels.size === 0) return;
+
+            alert(`Анализ ${selectedHotels.size} выбранных отелей...\n\nРезультаты анализа:\n• Средняя цена: 5,450 ₽\n• Рекомендуемая цена: 5,500 ₽\n• Ваша позиция: оптимальная`);
+
+            // Показываем во вкладке ценообразования
+            showTab('pricing');
+        }
+
+        // Очистить выбор
+        function clearSelected() {
+            selectedHotels.forEach(hotelId => {
+                const hotelCard = document.getElementById(`hotel-${hotelId}`);
+                if (hotelCard) hotelCard.classList.remove('selected');
+            });
+            selectedHotels.clear();
+            updateSelectedList();
+        }
+
+        // Обновить статистику
+        function updateStats(competitors) {
+            const avgPrice = competitors.reduce((sum, hotel) => sum + hotel.price, 0) / competitors.length;
+            document.getElementById('statsAvgPrice').textContent = Math.round(avgPrice).toLocaleString('ru-RU') + ' ₽';
+            document.getElementById('statsTotal').textContent = competitors.length;
+        }
+
+        // Показать список отелей
+        function renderHotelsList(competitors) {
+            const container = document.getElementById('hotelsList');
+            container.innerHTML = '';
+
+            competitors.forEach(hotel => {
+                const priceDiff = hotel.price - ourHotelPrice;
+                let priceBadgeClass = '';
+                let priceBadgeText = '';
+
+                if (priceDiff > 500) {
+                    priceBadgeClass = 'price-higher';
+                    priceBadgeText = `+${priceDiff} ₽`;
+                } else if (priceDiff < -500) {
+                    priceBadgeClass = 'price-lower';
+                    priceBadgeText = `${priceDiff} ₽`;
+                } else {
+                    priceBadgeClass = 'price-same';
+                    priceBadgeText = '≈';
+                }
+
+                const col = document.createElement('div');
+                col.className = 'col-md-4 mb-3';
+                col.innerHTML = `
+                    <div class="card hotel-card" id="hotel-${hotel.id}" onclick="selectHotel('${hotel.id}')">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-title mb-1">${hotel.name}</h6>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span class="badge bg-warning text-dark me-2">
+                                            <i class="bi bi-star"></i> ${hotel.rating}
+                                        </span>
+                                        <small class="text-muted">
+                                            <i class="bi bi-signpost"></i> ${hotel.distance}
+                                        </small>
+                                    </div>
+                                    <p class="text-muted mb-1 small">
+                                        <i class="bi bi-geo-alt"></i> ${hotel.address}
+                                    </p>
+                                </div>
+                                <div class="text-end">
+                                    <div class="price-badge ${priceBadgeClass}">
+                                        ${hotel.price.toLocaleString('ru-RU')} ₽
+                                    </div>
+                                    <small class="text-muted d-block mt-1">${priceBadgeText}</small>
+                                </div>
+                            </div>
+                            <div class="mt-3">
+                                <button class="btn btn-sm btn-outline-primary w-100" onclick="focusOnMap('${hotel.id}', event)">
+                                    <i class="bi bi-map"></i> Показать на карте
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(col);
+            });
+        }
+
+        // Фокус на карте
+        function focusOnMap(hotelId, event) {
+            if (event) event.stopPropagation();
+            const marker = markers[hotelId];
+            if (marker) {
+                map.setView(marker.getLatLng(), 16);
+                marker.openPopup();
+            }
+        }
+
+        // Управление картой
+        function zoomIn() {
+            if (map) map.zoomIn();
+        }
+
+        function zoomOut() {
+            if (map) map.zoomOut();
+        }
+
+        function resetView() {
+            if (map) map.setView([55.7558, 37.6173], 14);
+        }
+
+        // Фильтр цены
+        document.getElementById('priceFilter').addEventListener('input', function(e) {
+            document.getElementById('priceFilterValue').textContent = 
+                parseInt(e.target.value).toLocaleString('ru-RU') + ' ₽';
+        });
+
+        // Остальные функции
         function updateTime() {
             const now = new Date();
             document.getElementById('lastUpdate').textContent = 
-                now.toLocaleTimeString('ru-RU');
+                now.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
         }
 
-        // Проверить статус API
         async function checkApiStatus() {
             try {
                 const response = await fetch('/health');
@@ -432,30 +1007,19 @@ DASHBOARD_HTML = """
             }
         }
 
-        // Загрузить данные дашборда
-        async function loadDashboardData() {
+        function loadDashboardData() {
             try {
-                // Загрузка метрик
-                const competitorsRes = await fetch('/api/competitors');
-                const competitors = await competitorsRes.json();
-
-                // Расчет средней цены
-                const avgPrice = competitors.competitors.reduce((sum, c) => sum + c.price, 0) / competitors.competitors.length;
+                const competitorsRes = fetch('/api/competitors');
+                const avgPrice = 5500;
                 document.getElementById('avgPrice').textContent = avgPrice.toLocaleString('ru-RU') + ' ₽';
-
-                // Создание графика
                 createPriceChart();
-
             } catch (error) {
                 console.error('Ошибка загрузки данных:', error);
             }
         }
 
-        // Создать график цен
         function createPriceChart() {
             const ctx = document.getElementById('priceChart').getContext('2d');
-
-            // Тестовые данные
             const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
             const ourPrices = [5000, 5200, 5100, 5300, 5500, 6000, 5800];
             const marketPrices = [4800, 5000, 4900, 5100, 5300, 5600, 5400];
@@ -494,12 +1058,10 @@ DASHBOARD_HTML = """
             });
         }
 
-        // Расчет оптимальной цены
         async function calculateOptimalPrice() {
             const basePrice = parseFloat(document.getElementById('basePrice').value);
             const season = parseFloat(document.getElementById('season').value);
             const occupancy = parseInt(document.getElementById('occupancySlider').value) / 100;
-            const strategy = parseFloat(document.getElementById('strategy').value);
 
             try {
                 const response = await fetch('/api/pricing/calculate', {
@@ -517,104 +1079,19 @@ DASHBOARD_HTML = """
                 });
 
                 const result = await response.json();
-
-                // Показать результат
                 document.getElementById('finalPrice').textContent = 
                     result.final_price.toLocaleString('ru-RU') + ' ₽';
                 document.getElementById('priceResult').style.display = 'block';
-
             } catch (error) {
                 alert('Ошибка расчета: ' + error.message);
             }
         }
 
-        // Применить цену
         function applyPrice() {
             const price = document.getElementById('finalPrice').textContent;
             alert('Цена ' + price + ' успешно применена!');
         }
 
-        // Загрузить конкурентов
-        async function loadCompetitors() {
-            try {
-                const response = await fetch('/api/competitors');
-                const data = await response.json();
-
-                const table = document.getElementById('competitorsTable');
-                table.innerHTML = '';
-
-                data.competitors.forEach(competitor => {
-                    const row = `
-                        <tr>
-                            <td>${competitor.name}</td>
-                            <td><strong>${competitor.price.toLocaleString('ru-RU')} ₽</strong></td>
-                            <td>
-                                <span class="badge bg-warning text-dark">
-                                    <i class="bi bi-star-fill"></i> ${competitor.rating}
-                                </span>
-                            </td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="trackCompetitor('${competitor.name}')">
-                                    Отслеживать
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                    table.innerHTML += row;
-                });
-
-            } catch (error) {
-                console.error('Ошибка загрузки конкурентов:', error);
-            }
-        }
-
-        // Поиск конкурентов
-        function searchCompetitors() {
-            alert('Поиск конкурентов запущен...');
-        }
-
-        // Отслеживание конкурента
-        function trackCompetitor(name) {
-            alert('Начато отслеживание: ' + name);
-        }
-
-        // Загрузить отчеты
-        async function loadReports() {
-            try {
-                const response = await fetch('/api/reports/summary?hotel_id=test&days=7');
-                const data = await response.json();
-
-                const container = document.getElementById('reportsHistory');
-                container.innerHTML = `
-                    <div class="card">
-                        <div class="card-body">
-                            <h6>Последний отчет</h6>
-                            <p>Период: ${data.period_days} дней</p>
-                            <p>Средняя цена: ${data.summary.average_price.toLocaleString('ru-RU')} ₽</p>
-                            <p>Заполняемость: ${(data.summary.occupancy_rate * 100).toFixed(1)}%</p>
-                        </div>
-                    </div>
-                `;
-
-            } catch (error) {
-                console.error('Ошибка загрузки отчетов:', error);
-            }
-        }
-
-        // Генерация отчетов
-        function generateFinancialReport() {
-            alert('Финансовый отчет генерируется...');
-        }
-
-        function generatePricingReport() {
-            alert('Отчет по ценам генерируется...');
-        }
-
-        function generateCompetitorReport() {
-            alert('Отчет по конкурентам генерируется...');
-        }
-
-        // Остальные функции
         function calculatePrice() {
             showTab('pricing');
         }
@@ -627,7 +1104,6 @@ DASHBOARD_HTML = """
             showTab('reports');
         }
 
-        // Слайдер заполняемости
         document.getElementById('occupancySlider').addEventListener('input', function(e) {
             document.getElementById('occupancyValue').textContent = e.target.value + '%';
         });
@@ -637,7 +1113,7 @@ DASHBOARD_HTML = """
 """
 
 
-# ===== API ЭНДПОИНТЫ (ваши существующие) =====
+# ===== API ЭНДПОИНТЫ =====
 
 @app.get("/")
 async def root():
@@ -652,6 +1128,7 @@ async def api_info():
         "version": "1.0.0",
         "endpoints": {
             "competitors": "/api/competitors",
+            "competitors_map": "/api/competitors/map",
             "pricing": "/api/pricing/calculate",
             "reports": "/api/reports/summary",
             "health": "/health"
@@ -703,11 +1180,37 @@ async def get_competitors():
     }
 
 
+@app.get("/api/competitors/map")
+async def get_competitors_map():
+    """Данные для карты конкурентов"""
+    return COMPETITORS_DATA
+
+
+@app.post("/api/competitors/analyze")
+async def analyze_competitors(competitor_ids: List[str]):
+    """Анализ выбранных конкурентов"""
+    selected = [c for c in COMPETITORS_DATA["competitors"] if c["id"] in competitor_ids]
+
+    if not selected:
+        raise HTTPException(status_code=400, detail="No competitors selected")
+
+    prices = [c["price"] for c in selected]
+    avg_price = sum(prices) / len(prices)
+
+    return {
+        "selected_count": len(selected),
+        "average_price": round(avg_price, 2),
+        "our_price": COMPETITORS_DATA["our_hotel"]["price"],
+        "price_difference": round(avg_price - COMPETITORS_DATA["our_hotel"]["price"], 2),
+        "recommendation": "Рассмотрите корректировку цены на 5-10%",
+        "competitors": selected
+    }
+
+
 @app.post("/api/pricing/calculate")
 async def calculate_price(request: PricingRequest):
     """Упрощенный расчет цены"""
     try:
-        # Простой расчет
         final_price = request.base_price * request.season_factor
 
         if request.occupancy_rate > 0.8:
@@ -715,12 +1218,10 @@ async def calculate_price(request: PricingRequest):
         elif request.occupancy_rate < 0.4:
             final_price *= 0.9
 
-        # Если есть данные о конкурентах, учитываем их
         if request.competitors_data:
             competitor_prices = [c.get('price', 0) for c in request.competitors_data if 'price' in c]
             if competitor_prices:
                 avg_competitor_price = sum(competitor_prices) / len(competitor_prices)
-                # Если наша цена сильно отличается от средней, корректируем
                 if final_price > avg_competitor_price * 1.2:
                     final_price = avg_competitor_price * 1.15
                 elif final_price < avg_competitor_price * 0.8:
@@ -744,11 +1245,9 @@ async def calculate_price(request: PricingRequest):
 @app.get("/api/reports/summary")
 async def get_report_summary(hotel_id: str, days: int = 7):
     """Упрощенный отчет"""
-    # Генерация тестовых данных
     base_price = 5500
     occupancy = 0.78
 
-    # Динамика цен
     price_trend = []
     for i in range(days):
         price_trend.append({
@@ -775,8 +1274,6 @@ async def get_report_summary(hotel_id: str, days: int = 7):
         "generated_at": datetime.now().isoformat()
     }
 
-
-# Новые эндпоинты для интерфейса
 
 @app.get("/api/dashboard/metrics")
 async def get_dashboard_metrics():
@@ -848,7 +1345,6 @@ async def apply_price(hotel_id: str, price: float, room_type: str = "standard"):
     }
 
 
-# ДЕЙСТВИТЕЛЬНО ВАЖНО для Vercel
 if __name__ == "__main__":
     import uvicorn
 
