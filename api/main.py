@@ -430,23 +430,23 @@ DASHBOARD_HTML = """
             border-color: #4361ee;
             background-color: rgba(67, 97, 238, 0.05);
         }
-        
+
         /* Стиль для нашего отеля в списке */
         .hotel-card.our-hotel {
             border: 2px solid #4361ee;
             background-color: rgba(67, 97, 238, 0.05);
         }
-        
+
         .hotel-card.our-hotel:hover {
             border-color: #3a0ca3;
             box-shadow: 0 5px 15px rgba(67, 97, 238, 0.2);
         }
-        
+
         .price-badge.price-our-hotel {
             background-color: #4361ee;
             color: white;
         }
-        
+
         /* Подсветка нашего отеля при наведении в списке */
         .hotel-card.our-hotel .card-title {
             color: #4361ee;
@@ -567,28 +567,28 @@ DASHBOARD_HTML = """
         .btn-change-address:hover {
             background: #3a0ca3;
         }
-        
+
         /* Стили для формы редактирования */
         .edit-form-group {
             margin-bottom: 15px;
         }
-        
+
         .edit-label {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 5px;
         }
-        
+
         .current-value {
             color: #666;
             font-size: 0.9rem;
         }
-        
+
         .price-input-group {
             position: relative;
         }
-        
+
         .price-symbol {
             position: absolute;
             left: 10px;
@@ -596,36 +596,36 @@ DASHBOARD_HTML = """
             transform: translateY(-50%);
             color: #666;
         }
-        
+
         .price-input {
             padding-left: 30px;
         }
-        
+
         .rating-slider-container {
             display: flex;
             align-items: center;
             gap: 15px;
         }
-        
+
         .rating-value {
             font-weight: bold;
             min-width: 40px;
             text-align: center;
             font-size: 1.1rem;
         }
-        
+
         /* Иконки рейтинга */
         .rating-stars {
             display: flex;
             gap: 2px;
             margin: 10px 0;
         }
-        
+
         .star-icon {
             color: #ffd43b;
             font-size: 1.2rem;
         }
-        
+
         /* Статистика отеля */
         .hotel-stats {
             display: grid;
@@ -636,23 +636,23 @@ DASHBOARD_HTML = """
             background: #f8f9fa;
             border-radius: 10px;
         }
-        
+
         .stat-item {
             text-align: center;
         }
-        
+
         .stat-label {
             font-size: 0.9rem;
             color: #666;
             margin-bottom: 5px;
         }
-        
+
         .stat-value {
             font-size: 1.3rem;
             font-weight: bold;
             color: #4361ee;
         }
-        
+
         /* Кнопки управления отелем */
         .hotel-controls {
             position: absolute;
@@ -663,7 +663,7 @@ DASHBOARD_HTML = """
             flex-direction: column;
             gap: 5px;
         }
-        
+
         .btn-hotel-control {
             background: #4361ee;
             color: white;
@@ -678,41 +678,41 @@ DASHBOARD_HTML = """
             min-width: 160px;
             justify-content: center;
         }
-        
+
         .btn-hotel-control:hover {
             background: #3a0ca3;
         }
-        
+
         .btn-success {
             background: #51cf66 !important;
             border-color: #51cf66 !important;
         }
-        
+
         .btn-success:hover {
             background: #40c057 !important;
             border-color: #40c057 !important;
         }
-        
+
         .btn-edit-info {
             background: #ff6b6b;
         }
-        
+
         .btn-edit-info:hover {
             background: #ff5252;
         }
-        
+
         /* Контейнер для графика */
         .chart-container {
             position: relative;
             height: 500px;
             width: 100%;
         }
-        
+
         canvas {
             display: block;
             max-height: 100%;
         }
-        
+
         /* Стили для модальных окон с информацией об отелях */
         .modal-overlay {
             position: fixed;
@@ -728,7 +728,7 @@ DASHBOARD_HTML = """
             overflow-y: auto;
             padding: 20px;
         }
-        
+
         .modal-content {
             background: white;
             padding: 30px;
@@ -736,7 +736,7 @@ DASHBOARD_HTML = """
             box-shadow: 0 10px 40px rgba(0,0,0,0.2);
             animation: modalSlideIn 0.3s ease-out;
         }
-        
+
         @keyframes modalSlideIn {
             from {
                 opacity: 0;
@@ -747,40 +747,40 @@ DASHBOARD_HTML = """
                 transform: translateY(0);
             }
         }
-        
+
         /* Стили для сравнения */
         .comparison-table {
             width: 100%;
             border-collapse: collapse;
         }
-        
+
         .comparison-table th,
         .comparison-table td {
             padding: 10px;
             text-align: center;
             border: 1px solid #dee2e6;
         }
-        
+
         .comparison-table th {
             background-color: #f8f9fa;
             font-weight: 600;
         }
-        
+
         /* Улучшенные стили для карточек сравнения */
         .comparison-card {
             transition: transform 0.3s;
             height: 100%;
         }
-        
+
         .comparison-card:hover {
             transform: translateY(-5px);
         }
-        
+
         /* Анимация для появления попапа */
         .leaflet-popup-content-wrapper {
             animation: popupFadeIn 0.2s ease-out;
         }
-        
+
         @keyframes popupFadeIn {
             from {
                 opacity: 0;
@@ -789,6 +789,56 @@ DASHBOARD_HTML = """
             to {
                 opacity: 1;
                 transform: scale(1);
+            }
+        }
+        
+        /* Анимация для успешного применения цены */
+        @keyframes priceUpdate {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        
+        .price-updated {
+            animation: priceUpdate 0.5s ease-in-out;
+        }
+        
+        /* Стили для кнопки применения цены */
+        .btn-action {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-action:after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+        
+        .btn-action:focus:not(:active)::after {
+            animation: ripple 1s ease-out;
+        }
+        
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 0.5;
+            }
+            20% {
+                transform: scale(25, 25);
+                opacity: 0.3;
+            }
+            100% {
+                opacity: 0;
+                transform: scale(40, 40);
             }
         }
     </style>
@@ -852,11 +902,11 @@ DASHBOARD_HTML = """
             <div id="hotelInfoModal" class="modal-overlay">
                 <div class="modal-content">
                     <h4><i class="bi bi-pencil-square"></i> Редактировать информацию об отеле</h4>
-            
+
                     <div id="currentHotelInfo" class="mb-4">
                         <!-- Текущая информация будет загружена здесь -->
                     </div>
-            
+
                     <form id="hotelInfoForm">
                         <div class="edit-form-group">
                             <div class="edit-label">
@@ -866,7 +916,7 @@ DASHBOARD_HTML = """
                             <input type="text" class="form-control" id="hotelNameInput" 
                                    placeholder="Введите новое название">
                         </div>
-            
+
                         <div class="edit-form-group">
                             <div class="edit-label">
                                 <label class="form-label">Цена за ночь (₽)</label>
@@ -879,7 +929,7 @@ DASHBOARD_HTML = """
                             </div>
                             <small class="text-muted">Цена должна быть в диапазоне 1000 - 50000 ₽</small>
                         </div>
-            
+
                         <div class="edit-form-group">
                             <div class="edit-label">
                                 <label class="form-label">Рейтинг</label>
@@ -897,7 +947,7 @@ DASHBOARD_HTML = """
                             </div>
                             <small class="text-muted">Перетащите ползунок для изменения рейтинга</small>
                         </div>
-            
+
                         <div class="hotel-stats">
                             <div class="stat-item">
                                 <div class="stat-label">Позиция на рынке</div>
@@ -908,7 +958,7 @@ DASHBOARD_HTML = """
                                 <div class="stat-value" id="avgCompetitorPrice">5,540 ₽</div>
                             </div>
                         </div>
-            
+
                         <div class="d-flex justify-content-between mt-4">
                             <button type="button" class="btn btn-outline-secondary" onclick="closeHotelInfoModal()">
                                 <i class="bi bi-x"></i> Отмена
@@ -920,19 +970,19 @@ DASHBOARD_HTML = """
                     </form>
                 </div>
             </div>
-            
+
             <!-- Модальное окно добавления конкурента -->
             <div id="addCompetitorModal" class="modal-overlay">
                 <div class="modal-content">
                     <h4><i class="bi bi-plus-circle"></i> Добавить нового конкурента</h4>
-                    
+
                     <form id="addCompetitorForm">
                         <div class="edit-form-group">
                             <label class="form-label">Название отеля *</label>
                             <input type="text" class="form-control" id="competitorNameInput" 
                                    placeholder="Например: Президент Отель" required>
                         </div>
-                        
+
                         <div class="edit-form-group">
                             <label class="form-label">Адрес *</label>
                             <div class="address-search">
@@ -949,7 +999,7 @@ DASHBOARD_HTML = """
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="edit-form-group">
@@ -980,7 +1030,7 @@ DASHBOARD_HTML = """
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div id="selectedCompetitorAddressPreview" class="mb-3" style="display: none;">
                             <div class="alert alert-info">
                                 <h6><i class="bi bi-check-circle"></i> Выбранный адрес:</h6>
@@ -988,7 +1038,7 @@ DASHBOARD_HTML = """
                                 <small id="selectedCompetitorCoordinates" class="text-muted"></small>
                             </div>
                         </div>
-                        
+
                         <div class="d-flex justify-content-between mt-4">
                             <button type="button" class="btn btn-outline-secondary" onclick="closeAddCompetitorModal()">
                                 <i class="bi bi-x"></i> Отмена
@@ -1000,7 +1050,7 @@ DASHBOARD_HTML = """
                     </form>
                 </div>
             </div>
-            
+
             <!-- Меню -->
             <ul class="nav nav-tabs" id="dashboardTabs">
                 <li class="nav-item">
@@ -1145,9 +1195,20 @@ DASHBOARD_HTML = """
                                 <h4><i class="bi bi-check-circle"></i> Расчет завершен!</h4>
                                 <p class="mb-2">Рекомендуемая цена:</p>
                                 <h2 class="metric-value" id="finalPrice">5,500 ₽</h2>
-                                <button class="btn-action mt-3" onclick="applyPrice()">
-                                    <i class="bi bi-check-lg"></i> Применить эту цену
-                                </button>
+                                
+                                <!-- Добавлен новый параграф с рекомендацией -->
+                                <p class="mb-3" id="priceRecommendation">
+                                    <i class="bi bi-lightbulb"></i> Рекомендуется для максимизации прибыли
+                                </p>
+                                
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-primary btn-action" onclick="applyPrice()">
+                                        <i class="bi bi-check-lg"></i> Применить эту цену
+                                    </button>
+                                    <button class="btn btn-outline-secondary" onclick="document.getElementById('priceResult').style.display='none'">
+                                        <i class="bi bi-x"></i> Закрыть
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1275,7 +1336,7 @@ DASHBOARD_HTML = """
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Информация о нашем отеле -->
                         <div class="card mt-3">
                             <div class="card-body">
@@ -1390,7 +1451,7 @@ DASHBOARD_HTML = """
         let priceChart = null;
         let allCompetitorsData = [];
         let selectedCompetitorAddress = null;
-        
+
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
             loadDashboardData();
@@ -1398,22 +1459,22 @@ DASHBOARD_HTML = """
             checkApiStatus();
             setInterval(updateTime, 60000);
             initRatingStars();
-            
+
             // Добавляем обработчики для модальных окон
             document.getElementById('addressModal').addEventListener('click', function(e) {
                 if (e.target === this) {
                     closeAddressModal();
                 }
             });
-            
+
             document.getElementById('hotelInfoModal').addEventListener('click', function(e) {
                 if (e.target === this) closeHotelInfoModal();
             });
-            
+
             document.getElementById('addCompetitorModal').addEventListener('click', function(e) {
                 if (e.target === this) closeAddCompetitorModal();
             });
-            
+
             // Закрытие модальных окон по Escape
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape') {
@@ -1425,7 +1486,7 @@ DASHBOARD_HTML = """
             const priceFilterElement = document.getElementById('priceFilter');
             const ratingFilterElement = document.getElementById('ratingFilter');
             const distanceFilterElement = document.getElementById('distanceFilter');
-            
+
             if (priceFilterElement) {
                 priceFilterElement.addEventListener('input', function(e) {
                     const priceFilterValueElement = document.getElementById('priceFilterValue');
@@ -1437,13 +1498,13 @@ DASHBOARD_HTML = """
                     applyFilters();
                 });
             }
-            
+
             if (ratingFilterElement) {
                 ratingFilterElement.addEventListener('change', function() {
                     applyFilters();
                 });
             }
-            
+
             if (distanceFilterElement) {
                 distanceFilterElement.addEventListener('change', function() {
                     applyFilters();
@@ -1474,18 +1535,18 @@ DASHBOARD_HTML = """
 
         async function searchAddress(event = null) {
             const query = document.getElementById('addressInput').value.trim();
-            
+
             if (!query || query.length < 2) {
                 document.getElementById('searchResults').style.display = 'none';
                 return;
             }
-        
+
             // Если нажата Enter - сразу ищем
             if (event && event.key === 'Enter') {
                 await performGeocode(query);
                 return;
             }
-        
+
             try {
                 // Получаем подсказки от API
                 const response = await fetch('/api/search-address', {
@@ -1495,11 +1556,11 @@ DASHBOARD_HTML = """
                     },
                     body: JSON.stringify({ query: query })
                 });
-        
+
                 const data = await response.json();
                 const resultsDiv = document.getElementById('searchResults');
                 resultsDiv.innerHTML = '';
-                
+
                 if (data.suggestions && data.suggestions.length > 0) {
                     data.suggestions.forEach(item => {
                         const div = document.createElement('div');
@@ -1513,7 +1574,7 @@ DASHBOARD_HTML = """
                     // Если нет результатов от API, показываем локальные примеры
                     showLocalExamples(query, resultsDiv);
                 }
-        
+
             } catch (error) {
                 console.error('Ошибка поиска адреса:', error);
                 // При ошибке показываем локальные примеры
@@ -1521,7 +1582,7 @@ DASHBOARD_HTML = """
                 showLocalExamples(query, resultsDiv);
             }
         }
-        
+
         function showLocalExamples(query, resultsDiv) {
             const examples = [
                 "Москва, Красная площадь, 1",
@@ -1532,13 +1593,13 @@ DASHBOARD_HTML = """
                 "Санкт-Петербург, Невский проспект, 1",
                 "Екатеринбург, улица Ленина, 1"
             ];
-        
+
             const results = examples.filter(addr => 
                 addr.toLowerCase().includes(query.toLowerCase())
             );
-        
+
             resultsDiv.innerHTML = '';
-            
+
             if (results.length > 0) {
                 results.forEach(addr => {
                     const div = document.createElement('div');
@@ -1552,7 +1613,7 @@ DASHBOARD_HTML = """
                 resultsDiv.style.display = 'none';
             }
         }
-        
+
         async function performGeocode(query) {
             try {
                 const response = await fetch('/api/geocode', {
@@ -1562,9 +1623,9 @@ DASHBOARD_HTML = """
                     },
                     body: JSON.stringify({ address: query })
                 });
-        
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                     selectAddressFromResult(result);
                 } else {
@@ -1575,7 +1636,7 @@ DASHBOARD_HTML = """
                 alert('Ошибка при поиске адреса. Проверьте подключение к интернету.');
             }
         }
-        
+
         function selectAddressFromList(address) {
             // Отправляем выбранный адрес на геокодирование
             performGeocode(address);
@@ -1622,9 +1683,9 @@ DASHBOARD_HTML = """
 
                     // Центрируем карту на новом местоположении
                     map.setView([selectedAddress.lat, selectedAddress.lng], 15);
-                    
+
                     applyFilters();
-                    
+
                     alert('Адрес успешно изменен!');
                     closeAddressModal();
 
@@ -1646,7 +1707,7 @@ DASHBOARD_HTML = """
             // Инициализация звезд рейтинга
             const ratingStars = document.getElementById('ratingStars');
             if (!ratingStars) return;
-            
+
             ratingStars.innerHTML = '';
             for (let i = 0; i < 5; i++) {
                 const star = document.createElement('i');
@@ -1654,11 +1715,11 @@ DASHBOARD_HTML = """
                 ratingStars.appendChild(star);
             }
         }
-        
+
         function updateRatingStars(rating) {
             const stars = document.querySelectorAll('#ratingStars .star-icon');
             if (!stars.length) return;
-            
+
             stars.forEach((star, index) => {
                 if (index < Math.floor(rating)) {
                     star.className = 'bi bi-star-fill star-icon';
@@ -1669,82 +1730,101 @@ DASHBOARD_HTML = """
                 }
             });
         }
-        
+
         function openHotelInfoModal() {
             // Загружаем текущие данные отеля
             loadCurrentHotelInfo();
             document.getElementById('hotelInfoModal').style.display = 'flex';
         }
-        
+
         function closeHotelInfoModal() {
             document.getElementById('hotelInfoModal').style.display = 'none';
         }
-        
+
         async function loadCurrentHotelInfo() {
             try {
                 const response = await fetch('/api/competitors/map');
                 const data = await response.json();
-                
+
                 ourHotelData = data.our_hotel;
-                
+
                 // Обновляем текущие значения
                 document.getElementById('currentName').textContent = ourHotelData.name;
                 document.getElementById('currentPrice').textContent = ourHotelData.price.toLocaleString('ru-RU') + ' ₽';
                 document.getElementById('currentRating').textContent = ourHotelData.rating + ' ★';
-                
+
                 // Устанавливаем значения в форму
                 document.getElementById('hotelNameInput').value = ourHotelData.name;
                 document.getElementById('hotelPriceInput').value = ourHotelData.price;
                 document.getElementById('hotelRatingInput').value = ourHotelData.rating;
                 document.getElementById('ratingValueDisplay').textContent = ourHotelData.rating;
-                
+
                 // Обновляем звезды рейтинга
                 updateRatingStars(ourHotelData.rating);
-                
+
                 // Обновляем статистику
                 updateStats(data.competitors);
-                
+
                 // Обновляем информацию в боковой панели
                 updateOurHotelDisplay();
-                
+
             } catch (error) {
                 console.error('Ошибка загрузки данных отеля:', error);
                 alert('Ошибка загрузки данных отеля');
             }
         }
-        
+
         function updateOurHotelDisplay() {
             if (!ourHotelData) return;
+
+            const priceDisplay = document.getElementById('ourHotelPriceDisplay');
+            const ratingDisplay = document.getElementById('ourHotelRatingDisplay');
+            const addressDisplay = document.getElementById('ourHotelAddressDisplay');
             
-            document.getElementById('ourHotelPriceDisplay').textContent = ourHotelData.price.toLocaleString('ru-RU') + ' ₽';
-            document.getElementById('ourHotelRatingDisplay').textContent = ourHotelData.rating;
-            document.getElementById('ourHotelAddressDisplay').textContent = ourHotelData.address;
+            if (priceDisplay) {
+                priceDisplay.textContent = ourHotelData.price.toLocaleString('ru-RU') + ' ₽';
+                // Добавляем анимацию при обновлении
+                priceDisplay.parentElement.classList.add('price-updated');
+                setTimeout(() => {
+                    priceDisplay.parentElement.classList.remove('price-updated');
+                }, 500);
+            }
             
-            // Обновляем метрики на главной вкладке
-            document.getElementById('avgPrice').textContent = ourHotelData.price.toLocaleString('ru-RU') + ' ₽';
-        }
+            if (ratingDisplay) ratingDisplay.textContent = ourHotelData.rating;
+            if (addressDisplay) addressDisplay.textContent = ourHotelData.address;
         
+            // Обновляем метрики на главной вкладке
+            const avgPriceElement = document.getElementById('avgPrice');
+            if (avgPriceElement) {
+                avgPriceElement.textContent = ourHotelData.price.toLocaleString('ru-RU') + ' ₽';
+                avgPriceElement.parentElement.classList.add('price-updated');
+                setTimeout(() => {
+                    avgPriceElement.parentElement.classList.remove('price-updated');
+                }, 500);
+            }
+        }
+
         async function updateHotelInfo() {
             const name = document.getElementById('hotelNameInput').value.trim();
             const price = parseFloat(document.getElementById('hotelPriceInput').value);
             const rating = parseFloat(document.getElementById('hotelRatingInput').value);
-        
+
             // Валидация
             if (!name) {
                 alert('Пожалуйста, введите название отеля');
                 return;
             }
-        
+
             if (isNaN(price) || price < 1000 || price > 50000) {
                 alert('Цена должна быть в диапазоне 1000 - 50000 ₽');
                 return;
             }
-        
+
             if (isNaN(rating) || rating < 1 || rating > 5) {
                 alert('Рейтинг должен быть в диапазоне 1.0 - 5.0');
                 return;
             }
-        
+
             try {
                 const response = await fetch('/api/hotel/update-info', {
                     method: 'POST',
@@ -1758,51 +1838,51 @@ DASHBOARD_HTML = """
                         rating: rating
                     })
                 });
-        
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                     // Обновляем данные нашего отеля
                     ourHotelData.name = name;
                     ourHotelData.price = price;
                     ourHotelData.rating = rating;
-                    
+
                     // Обновляем маркер нашего отеля
                     if (markers.our_hotel) {
                         map.removeLayer(markers.our_hotel);
                     }
                     addOurHotel(ourHotelData);
-                    
+
                     // Удаляем и перерисовываем все маркеры конкурентов с новыми цветами
                     Object.keys(markers).forEach(key => {
                         if (key !== 'our_hotel') {
                             map.removeLayer(markers[key]);
                         }
                     });
-                    
+
                     // Загружаем данные конкурентов и перерисовываем их
                     const competitorsResponse = await fetch('/api/competitors/map');
                     const competitorsData = await competitorsResponse.json();
-                    
+
                     competitorsData.competitors.forEach(hotel => {
                         addCompetitorMarker(hotel);
                     });
-                    
+
                     // Обновляем отображение
                     updateOurHotelDisplay();
-                    
+
                     // Перерисовываем список отелей
                     renderHotelsList(competitorsData.competitors);
-                    
+
                     // Обновляем статистику
                     updateStats(competitorsData.competitors);
-                    
+
                     // Применяем фильтры после обновления
                     applyFilters();
-                    
+
                     alert('Информация об отеле успешно обновлена!');
                     closeHotelInfoModal();
-                    
+
                 } else {
                     alert('Ошибка при обновлении информации: ' + result.error);
                 }
@@ -1811,14 +1891,14 @@ DASHBOARD_HTML = """
                 alert('Ошибка при обновлении информации');
             }
         }
-        
+
         // Обработчик изменения ползунка рейтинга
         document.getElementById('hotelRatingInput').addEventListener('input', function(e) {
             const rating = parseFloat(e.target.value);
             document.getElementById('ratingValueDisplay').textContent = rating.toFixed(1);
             updateRatingStars(rating);
         });
-        
+
         // ===== ФУНКЦИИ ДЛЯ ДОБАВЛЕНИЯ КОНКУРЕНТА =====
 
         function openAddCompetitorModal() {
@@ -1827,12 +1907,12 @@ DASHBOARD_HTML = """
             initCompetitorRatingStars();
             resetCompetitorModal();
         }
-        
+
         function closeAddCompetitorModal() {
             document.getElementById('addCompetitorModal').style.display = 'none';
             resetCompetitorModal();
         }
-        
+
         function resetCompetitorModal() {
             document.getElementById('competitorNameInput').value = '';
             document.getElementById('competitorAddressInput').value = '';
@@ -1843,22 +1923,22 @@ DASHBOARD_HTML = """
             document.getElementById('competitorSearchResults').style.display = 'none';
             document.getElementById('selectedCompetitorAddressPreview').style.display = 'none';
             selectedCompetitorAddress = null;
-            
+
             // Обновляем звезды рейтинга
             updateCompetitorRatingStars(4.5);
         }
-        
+
         function initCompetitorRatingStars() {
             const ratingStars = document.getElementById('competitorRatingStars');
             if (!ratingStars) return;
-            
+
             ratingStars.innerHTML = '';
             for (let i = 0; i < 5; i++) {
                 const star = document.createElement('i');
                 star.className = 'bi bi-star-fill star-icon';
                 ratingStars.appendChild(star);
             }
-            
+
             // Обработчик изменения ползунка рейтинга
             document.getElementById('competitorRatingInput').addEventListener('input', function(e) {
                 const rating = parseFloat(e.target.value);
@@ -1866,11 +1946,11 @@ DASHBOARD_HTML = """
                 updateCompetitorRatingStars(rating);
             });
         }
-        
+
         function updateCompetitorRatingStars(rating) {
             const stars = document.querySelectorAll('#competitorRatingStars .star-icon');
             if (!stars.length) return;
-            
+
             stars.forEach((star, index) => {
                 if (index < Math.floor(rating)) {
                     star.className = 'bi bi-star-fill star-icon';
@@ -1881,21 +1961,21 @@ DASHBOARD_HTML = """
                 }
             });
         }
-        
+
         async function searchCompetitorAddress(event = null) {
             const query = document.getElementById('competitorAddressInput').value.trim();
-            
+
             if (!query || query.length < 2) {
                 document.getElementById('competitorSearchResults').style.display = 'none';
                 return;
             }
-            
+
             // Если нажата Enter - сразу ищем
             if (event && event.key === 'Enter') {
                 await performCompetitorGeocode(query);
                 return;
             }
-            
+
             try {
                 const response = await fetch('/api/search-address', {
                     method: 'POST',
@@ -1904,11 +1984,11 @@ DASHBOARD_HTML = """
                     },
                     body: JSON.stringify({ query: query })
                 });
-                
+
                 const data = await response.json();
                 const resultsDiv = document.getElementById('competitorSearchResults');
                 resultsDiv.innerHTML = '';
-                
+
                 if (data.suggestions && data.suggestions.length > 0) {
                     data.suggestions.forEach(item => {
                         const div = document.createElement('div');
@@ -1927,7 +2007,7 @@ DASHBOARD_HTML = """
                 showCompetitorLocalExamples(query, resultsDiv);
             }
         }
-        
+
         function showCompetitorLocalExamples(query, resultsDiv) {
             const examples = [
                 "Москва, Красная площадь, 1",
@@ -1938,13 +2018,13 @@ DASHBOARD_HTML = """
                 "Санкт-Петербург, Невский проспект, 1",
                 "Екатеринбург, улица Ленина, 1"
             ];
-            
+
             const results = examples.filter(addr => 
                 addr.toLowerCase().includes(query.toLowerCase())
             );
-            
+
             resultsDiv.innerHTML = '';
-            
+
             if (results.length > 0) {
                 results.forEach(addr => {
                     const div = document.createElement('div');
@@ -1958,7 +2038,7 @@ DASHBOARD_HTML = """
                 resultsDiv.style.display = 'none';
             }
         }
-        
+
         async function performCompetitorGeocode(query) {
             try {
                 const response = await fetch('/api/geocode', {
@@ -1968,9 +2048,9 @@ DASHBOARD_HTML = """
                     },
                     body: JSON.stringify({ address: query })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                     selectCompetitorAddressFromResult(result);
                 } else {
@@ -1981,55 +2061,55 @@ DASHBOARD_HTML = """
                 alert('Ошибка при поиске адреса. Проверьте подключение к интернету.');
             }
         }
-        
+
         function selectCompetitorAddressFromList(address) {
             performCompetitorGeocode(address);
         }
-        
+
         function selectCompetitorAddressFromResult(result) {
             selectedCompetitorAddress = result;
-            
+
             document.getElementById('selectedCompetitorAddressText').textContent = result.address;
             document.getElementById('selectedCompetitorCoordinates').textContent = `Координаты: ${result.coordinates}`;
             document.getElementById('selectedCompetitorAddressPreview').style.display = 'block';
             document.getElementById('competitorSearchResults').style.display = 'none';
         }
-        
+
         // Обработчик формы добавления конкурента
         document.getElementById('addCompetitorForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             await addNewCompetitor();
         });
-        
+
         async function addNewCompetitor() {
             const name = document.getElementById('competitorNameInput').value.trim();
             const addressInput = document.getElementById('competitorAddressInput').value.trim();
             const price = parseFloat(document.getElementById('competitorPriceInput').value);
             const rating = parseFloat(document.getElementById('competitorRatingInput').value);
-            
+
             // Валидация
             if (!name) {
                 alert('Пожалуйста, введите название отеля');
                 return;
             }
-            
+
             if (!addressInput && !selectedCompetitorAddress) {
                 alert('Пожалуйста, введите адрес или выберите из списка');
                 return;
             }
-            
+
             const address = selectedCompetitorAddress ? selectedCompetitorAddress.address : addressInput;
-            
+
             if (isNaN(price) || price < 1000 || price > 50000) {
                 alert('Цена должна быть в диапазоне 1000 - 50000 ₽');
                 return;
             }
-            
+
             if (isNaN(rating) || rating < 1 || rating > 5) {
                 alert('Рейтинг должен быть в диапазоне 1.0 - 5.0');
                 return;
             }
-            
+
             try {
                 const response = await fetch('/api/competitors/add', {
                     method: 'POST',
@@ -2043,19 +2123,19 @@ DASHBOARD_HTML = """
                         rating: rating
                     })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                     // Добавляем нового конкурента в локальные данные
                     allCompetitorsData.push(result.competitor);
-                    
+
                     // Применяем фильтры (новый конкурент появится на карте и в списке)
                     applyFilters();
-                    
+
                     alert('Конкурент успешно добавлен!');
                     closeAddCompetitorModal();
-                    
+
                 } else {
                     alert('Ошибка при добавлении конкурента: ' + result.message);
                 }
@@ -2064,13 +2144,13 @@ DASHBOARD_HTML = """
                 alert('Ошибка при добавлении конкурента');
             }
         }
-        
+
         // Функция удаления конкурента
         async function deleteCompetitor(competitorId) {
             if (!confirm('Вы уверены, что хотите удалить этого конкурента?')) {
                 return;
             }
-            
+
             try {
                 const response = await fetch('/api/competitors/delete', {
                     method: 'POST',
@@ -2081,24 +2161,24 @@ DASHBOARD_HTML = """
                         competitor_id: competitorId
                     })
                 });
-                
+
                 const result = await response.json();
-                
+
                 if (result.success) {
                     // Удаляем конкурента из локальных данных
                     allCompetitorsData = allCompetitorsData.filter(hotel => hotel.id !== competitorId);
-                    
+
                     // Удаляем из выбранных, если был выбран
                     if (selectedHotels.has(competitorId)) {
                         selectedHotels.delete(competitorId);
                         updateSelectedList();
                     }
-                    
+
                     // Применяем фильтры (конкурент исчезнет с карты и из списка)
                     applyFilters();
-                    
+
                     alert('Конкурент успешно удален!');
-                    
+
                 } else {
                     alert('Ошибка при удалении конкурента: ' + result.message);
                 }
@@ -2107,7 +2187,7 @@ DASHBOARD_HTML = """
                 alert('Ошибка при удалении конкурента');
             }
         }
-        
+
         // ===== ОСТАЛЬНЫЕ ФУНКЦИИ =====
 
         // Показать вкладку
@@ -2118,13 +2198,13 @@ DASHBOARD_HTML = """
             document.querySelectorAll('.nav-link').forEach(link => {
                 link.classList.remove('active');
             });
-            
+
             // Используем event из параметра функции
             const clickedElement = window.event ? window.event.target : arguments[0] ? arguments[0].target : null;
             if (clickedElement) {
                 clickedElement.classList.add('active');
             }
-            
+
             document.getElementById(tabName + 'Tab').style.display = 'block';
 
             if (tabName === 'competitors') {
@@ -2162,7 +2242,7 @@ DASHBOARD_HTML = """
                 ourHotelData = data.our_hotel;
                 allCompetitorsData = data.competitors;
                 ourHotelPrice = ourHotelData.price;
-        
+
                 // Очищаем все маркеры
                 if (map) {
                     Object.keys(markers).forEach(key => {
@@ -2170,10 +2250,10 @@ DASHBOARD_HTML = """
                     });
                 }
                 markers = {};
-        
+
                 // Добавляем наш отель
                 addOurHotel(ourHotelData);
-                
+
                 // Применяем фильтры для конкурентов
                 applyFilters();
 
@@ -2181,78 +2261,78 @@ DASHBOARD_HTML = """
                 console.error('Ошибка загрузки данных карты:', error);
             }
         }
-        
+
         // Функция применения фильтров
         function applyFilters() {
             if (!map || !allCompetitorsData.length) return;
-            
+
             // Получаем значения фильтров
             const maxPrice = parseInt(document.getElementById('priceFilter').value);
             const minRating = parseFloat(document.getElementById('ratingFilter').value);
             const maxDistance = parseFloat(document.getElementById('distanceFilter').value);
-            
+
             // Фильтруем отели (кроме нашего отеля)
             const filteredCompetitors = allCompetitorsData.filter(hotel => {
                 // Фильтр по цене
                 if (hotel.price > maxPrice) return false;
-                
+
                 // Фильтр по рейтингу
                 if (minRating > 0 && hotel.rating < minRating) return false;
-                
+
                 // Фильтр по расстоянию (извлекаем числовое значение)
                 const distanceStr = hotel.distance;
                 let distanceNum = 0;
-                
+
                 if (distanceStr.includes('км')) {
                     distanceNum = parseFloat(distanceStr);
                 } else if (distanceStr.includes('м')) {
                     distanceNum = parseInt(distanceStr) / 1000;
                 }
-                
+
                 if (maxDistance < 5 && distanceNum > maxDistance) return false;
-                
+
                 return true;
             });
-            
+
             // Очищаем только маркеры конкурентов (не трогаем наш отель)
             Object.keys(markers).forEach(key => {
                 if (key !== 'our_hotel' && markers[key]) {
                     map.removeLayer(markers[key]);
                 }
             });
-            
+
             // Удаляем только маркеры конкурентов из объекта markers
             Object.keys(markers).forEach(key => {
                 if (key !== 'our_hotel') {
                     delete markers[key];
                 }
             });
-            
+
             // Очищаем выбранные отели конкурентов, которые не прошли фильтрацию
             selectedHotels.forEach(hotelId => {
                 if (hotelId !== 'our_hotel' && !filteredCompetitors.some(hotel => hotel.id === hotelId)) {
                     selectedHotels.delete(hotelId);
                 }
             });
-            
+
             // Обновляем список выбранных
             updateSelectedList();
-            
+
             // Добавляем отфильтрованных конкурентов
             filteredCompetitors.forEach(hotel => {
                 addCompetitorMarker(hotel);
             });
-            
+
             // Обновляем список всех отелей (включая наш отель)
             renderHotelsList([ourHotelData, ...filteredCompetitors]);
-            
+
             // Обновляем статистику (только по конкурентам)
             updateStats(filteredCompetitors);
-            
+
             // Возвращаем отфильтрованные данные
             return filteredCompetitors;
         }
-        
+
         // Добавить наш отель на карту
         function addOurHotel(hotel) {
             const icon = L.divIcon({
@@ -2270,7 +2350,8 @@ DASHBOARD_HTML = """
                         justify-content: center;
                         color: white;
                         font-size: 20px;
-                        cursor: pointer;>
+                        cursor: pointer;
+                    " onclick="showHotelInfo('${hotel.id}', event)">
                         <i class="bi bi-house-door"></i>
                     </div>
                 `,
@@ -2288,6 +2369,9 @@ DASHBOARD_HTML = """
                         <p><i class="bi bi-geo-alt"></i> ${hotel.address}</p>
                         <p><i class="bi bi-cash"></i> <b>${hotel.price.toLocaleString('ru-RU')} ₽</b></p>
                         <p><i class="bi bi-star"></i> ${hotel.rating} ★</p>
+                        <button class="btn btn-sm btn-outline-primary w-100 mt-2" onclick="showHotelInfoModalFromPopup('${hotel.id}')">
+                            <i class="bi bi-info-circle"></i> Подробная информация
+                        </button>
                     </div>
                 `);
 
@@ -2296,21 +2380,23 @@ DASHBOARD_HTML = """
 
         // Добавить маркер конкурента
         function addCompetitorMarker(hotel) {
+            // Используем ourHotelData.price вместо глобальной переменной ourHotelPrice
             const priceDiff = hotel.price - ourHotelData.price;
             let priceClass = '';
             let markerColor = '';
 
+            // Определяем цвет маркера в зависимости от разницы цен
             if (priceDiff > 500) {
                 priceClass = 'price-higher';
-                markerColor = '#ef476f';
+                markerColor = '#ef476f'; // Красный для дороже
             } else if (priceDiff < -500) {
                 priceClass = 'price-lower';
-                markerColor = '#06d6a0';
+                markerColor = '#06d6a0'; // Зеленый для дешевле
             } else {
                 priceClass = 'price-same';
-                markerColor = '#ffd166';
+                markerColor = '#ffd166'; // Желтый для примерно одинаково
             }
-        
+
             const icon = L.divIcon({
                 className: 'custom-icon',
                 html: `
@@ -2327,13 +2413,13 @@ DASHBOARD_HTML = """
                         color: white;
                         cursor: pointer;
                         transition: all 0.3s;
-                    ">
+                    " onclick="showHotelInfo('${hotel.id}', event)">
                         <i class="bi bi-building"></i>
                     </div>
                 `,
                 iconSize: [35, 35]
             });
-        
+
             const marker = L.marker([hotel.lat, hotel.lng], { icon: icon })
                 .addTo(map)
                 .on('click', function() {
@@ -2347,12 +2433,17 @@ DASHBOARD_HTML = """
                         <p><i class="bi bi-cash"></i> <b>${hotel.price.toLocaleString('ru-RU')} ₽</b></p>
                         <p><i class="bi bi-star"></i> ${hotel.rating} ★</p>
                         <p>Разница: <span class="badge ${priceClass}">${priceDiff > 0 ? '+' : ''}${priceDiff} ₽</span></p>
-                        <button class="btn btn-sm btn-primary w-100 mt-2" onclick="selectHotel('${hotel.id}')">
-                            <i class="bi bi-plus-circle"></i> Выбрать для анализа
-                        </button>
+                        <div class="d-flex gap-2 mt-2">
+                            <button class="btn btn-sm btn-primary w-50" onclick="selectHotel('${hotel.id}')">
+                                <i class="bi bi-plus-circle"></i> Выбрать
+                            </button>
+                            <button class="btn btn-sm btn-outline-info w-50" onclick="showHotelInfoModalFromPopup('${hotel.id}')">
+                                <i class="bi bi-info-circle"></i> Подробнее
+                            </button>
+                        </div>
                     </div>
                 `);
-        
+
             markers[hotel.id] = marker;
         }
 
@@ -2367,7 +2458,7 @@ DASHBOARD_HTML = """
                 alert('Это наш отель. Вы не можете выбрать его для анализа.');
                 return;
             }
-        
+
             if (selectedHotels.has(hotelId)) {
                 selectedHotels.delete(hotelId);
                 if (hotelCard) hotelCard.classList.remove('selected');
@@ -2498,7 +2589,7 @@ DASHBOARD_HTML = """
                 }
             }
         }
-        
+
         // Функция для перерисовки всех маркеров конкурентов
         function redrawAllCompetitorMarkers(competitors) {
             // Удаляем все маркеры конкурентов
@@ -2507,18 +2598,18 @@ DASHBOARD_HTML = """
                     map.removeLayer(markers[key]);
                 }
             });
-            
+
             // Добавляем маркеры конкурентов с новыми цветами
             competitors.forEach(hotel => {
                 addCompetitorMarker(hotel);
             });
         }
-        
+
         // Показать список отелей
         function renderHotelsList(hotels) {
             const container = document.getElementById('hotelsList');
             if (!container) return;
-            
+
             container.innerHTML = '';
 
             hotels.forEach(hotel => {
@@ -2527,10 +2618,10 @@ DASHBOARD_HTML = """
                 let priceBadgeClass = '';
                 let priceBadgeText = '';
                 let priceDiff = 0;
-                
+
                 if (!isOurHotel) {
                     priceDiff = hotel.price - ourHotelData.price;
-                    
+
                     if (priceDiff > 500) {
                         priceBadgeClass = 'price-higher';
                         priceBadgeText = `+${priceDiff} ₽`;
@@ -2545,13 +2636,13 @@ DASHBOARD_HTML = """
                     // Для нашего отеля используем специальный класс
                     priceBadgeClass = 'price-our-hotel';
                 }
-                
+
                 // Проверяем, выбран ли отель
                 const isSelected = selectedHotels.has(hotel.id);
-                
+
                 // Создаем специальный CSS класс для нашего отеля
                 const hotelCardClass = isOurHotel ? 'hotel-card our-hotel' : 'hotel-card';
-        
+
                 const col = document.createElement('div');
                 col.className = 'col-md-4 mb-3';
                 col.innerHTML = `
@@ -2647,15 +2738,15 @@ DASHBOARD_HTML = """
         function generateFinancialReport() {
             alert('Финансовый отчет генерируется...');
         }
-    
+
         function generatePricingReport() {
             alert('Отчет по ценам генерируется...');
         }
-    
+
         function generateCompetitorReport() {
             alert('Отчет по конкурентам генерируется...');
         }
-        
+
         // Остальные функции
         function updateTime() {
             const lastUpdateElement = document.getElementById('lastUpdate');
@@ -2696,20 +2787,20 @@ DASHBOARD_HTML = """
                 console.error('Ошибка загрузки данных:', error);
             }
         }
-        
+
         function createPriceChart() {
             const ctx = document.getElementById('priceChart');
             if (!ctx) {
                 console.error('Canvas элемент #priceChart не найден');
                 return;
             }
-            
+
             try {
                 // Если график уже существует, уничтожаем его
                 if (priceChart) {
                     priceChart.destroy();
                 }
-                
+
                 const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
                 const ourPrices = [5000, 5200, 5100, 5300, 5500, 6000, 5800];
                 const marketPrices = [4800, 5000, 4900, 5100, 5300, 5600, 5400];
@@ -2718,7 +2809,7 @@ DASHBOARD_HTML = """
                 const allPrices = [...ourPrices, ...marketPrices];
                 const minValue = Math.min(...allPrices) * 0.95; // -5% от минимума
                 const maxValue = Math.max(...allPrices) * 1.05; // +5% от максимума
-        
+
                 priceChart = new Chart(ctx.getContext('2d'), {
                     type: 'line',
                     data: {
@@ -2830,6 +2921,16 @@ DASHBOARD_HTML = """
             const season = parseFloat(document.getElementById('season').value);
             const occupancy = parseInt(document.getElementById('occupancySlider').value) / 100;
 
+            // Получаем текущие данные о конкурентах
+            const competitors = await getCompetitorsData();
+            
+            // Формируем данные конкурентов для расчета
+            const competitorsData = competitors.map(hotel => ({
+                price: hotel.price,
+                rating: hotel.rating,
+                distance: hotel.distance
+            }));
+        
             try {
                 const response = await fetch('/api/pricing/calculate', {
                     method: 'POST',
@@ -2837,49 +2938,145 @@ DASHBOARD_HTML = """
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        hotel_id: 'hotel_001',
+                        hotel_id: 'our_hotel',
                         base_price: basePrice,
-                        competitors_data: [],
+                        competitors_data: competitorsData,
                         season_factor: season,
                         occupancy_rate: occupancy
                     })
                 });
-
+        
                 const result = await response.json();
+                
+                // Обновляем отображение результата
                 const finalPriceElement = document.getElementById('finalPrice');
                 if (finalPriceElement) {
                     finalPriceElement.textContent = 
                         result.final_price.toLocaleString('ru-RU') + ' ₽';
                 }
+                
+                // Показываем панель с результатом
                 const priceResultElement = document.getElementById('priceResult');
                 if (priceResultElement) {
                     priceResultElement.style.display = 'block';
+                    
+                    // Добавляем информацию о расчете
+                    const factors = result.factors || {};
+                    let detailsHtml = `
+                        <div class="mt-3">
+                            <h6>Детали расчета:</h6>
+                            <ul class="mb-0">
+                                <li>Базовая цена: ${basePrice.toLocaleString('ru-RU')} ₽</li>
+                                <li>Сезонный коэффициент: ${season.toFixed(1)}x</li>
+                                <li>Заполняемость: ${(occupancy * 100).toFixed(0)}%</li>
+                                <li>Учтено конкурентов: ${competitorsData.length}</li>
+                            </ul>
+                        </div>
+                    `;
+                    
+                    // Проверяем, есть ли уже детали
+                    const existingDetails = priceResultElement.querySelector('.calculation-details');
+                    if (existingDetails) {
+                        existingDetails.innerHTML = detailsHtml;
+                    } else {
+                        const detailsDiv = document.createElement('div');
+                        detailsDiv.className = 'calculation-details';
+                        detailsDiv.innerHTML = detailsHtml;
+                        priceResultElement.querySelector('.alert').appendChild(detailsDiv);
+                    }
                 }
             } catch (error) {
                 alert('Ошибка расчета: ' + error.message);
             }
         }
 
-        function applyPrice() {
+        async function applyPrice() {
             const finalPriceElement = document.getElementById('finalPrice');
-            if (finalPriceElement) {
-                const price = finalPriceElement.textContent;
-                alert('Цена ' + price + ' успешно применена!');
+            if (!finalPriceElement) return;
+            
+            // Извлекаем цену из текста (убираем пробелы и символ ₽)
+            const priceText = finalPriceElement.textContent;
+            const price = parseFloat(priceText.replace(/\s/g, '').replace('₽', ''));
+            
+            if (isNaN(price) || price < 1000 || price > 50000) {
+                alert('Некорректная цена. Пожалуйста, пересчитайте ещё раз.');
+                return;
+            }
+            
+            try {
+                // Обновляем цену через API
+                const response = await fetch('/api/hotel/update-info', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        hotel_id: 'our_hotel',
+                        price: price
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Обновляем данные нашего отеля локально
+                    if (ourHotelData) {
+                        ourHotelData.price = price;
+                    }
+                    
+                    // Обновляем отображение цены
+                    updateOurHotelDisplay();
+                    
+                    // Обновляем маркер нашего отеля на карте
+                    if (markers.our_hotel) {
+                        map.removeLayer(markers.our_hotel);
+                        addOurHotel(ourHotelData);
+                    }
+                    
+                    // Перерисовываем маркеры конкурентов с новыми цветами
+                    const competitors = await getCompetitorsData();
+                    redrawAllCompetitorMarkers(competitors);
+                    
+                    // Применяем фильтры
+                    applyFilters();
+                    
+                    // Обновляем статистику
+                    updateStats(competitors);
+                    
+                    alert('Цена успешно применена! Новая цена: ' + price.toLocaleString('ru-RU') + ' ₽');
+                    
+                } else {
+                    alert('Ошибка при применении цены: ' + result.error);
+                }
+            } catch (error) {
+                console.error('Ошибка применения цены:', error);
+                alert('Ошибка при применении цены: ' + error.message);
+            }
+        }
+        
+        async function getCompetitorsData() {
+            try {
+                const response = await fetch('/api/competitors/map');
+                const data = await response.json();
+                return data.competitors;
+            } catch (error) {
+                console.error('Ошибка загрузки данных конкурентов:', error);
+                return [];
             }
         }
 
         function calculatePrice() {
             showTab('pricing');
         }
-    
+
         function analyzeCompetitors() {
             showTab('competitors');
         }
-    
+
         function generateReport() {
             showTab('reports');
         }
-    
+
         const occupancySliderElement = document.getElementById('occupancySlider');
         if (occupancySliderElement) {
             occupancySliderElement.addEventListener('input', function(e) {
@@ -2889,20 +3086,42 @@ DASHBOARD_HTML = """
                 }
             });
         }
-                
+
         // ===== ФУНКЦИИ ДЛЯ ОТОБРАЖЕНИЯ ИНФОРМАЦИИ ОБ ОТЕЛЕ =====
-        
-        
+
+        // Временно показывать информацию в алерте (можно заменить на модальное окно)
+        function showHotelInfo(hotelId, event) {
+            if (event) event.stopPropagation();
+
+            // Находим отель по ID
+            let hotel;
+            if (hotelId === 'our_hotel') {
+                hotel = ourHotelData;
+            } else {
+                hotel = allCompetitorsData.find(h => h.id === hotelId);
+            }
+
+            if (!hotel) {
+                console.error('Отель не найден:', hotelId);
+                return;
+            }
+
+            // Открываем попап маркера
+            if (markers[hotelId]) {
+                markers[hotelId].openPopup();
+            }
+        }
+
         // Модальное окно с подробной информацией об отеле
         function showHotelInfoModal(hotel) {
             // Если это наш отель
             const isOurHotel = hotel.id === 'our_hotel';
-            
+
             // Рассчитываем разницу цен (только для конкурентов)
             let priceDiff = 0;
             let priceDiffClass = '';
             let priceDiffText = '';
-            
+
             if (!isOurHotel && ourHotelData) {
                 priceDiff = hotel.price - ourHotelData.price;
                 if (priceDiff > 500) {
@@ -2916,7 +3135,7 @@ DASHBOARD_HTML = """
                     priceDiffText = 'Примерно одинаково';
                 }
             }
-            
+
             // Создаем HTML для модального окна
             const modalHtml = `
                 <div id="hotelDetailModal" class="modal-overlay" style="display: flex;">
@@ -2927,7 +3146,7 @@ DASHBOARD_HTML = """
                                 <i class="bi bi-x"></i>
                             </button>
                         </div>
-                        
+
                         <div class="row">
                             <div class="col-md-8">
                                 <div class="mb-3">
@@ -2935,14 +3154,14 @@ DASHBOARD_HTML = """
                                     <p class="mb-2">${hotel.address}</p>
                                     <small class="text-muted">Координаты: ${hotel.lat.toFixed(6)}, ${hotel.lng.toFixed(6)}</small>
                                 </div>
-                                
+
                                 ${!isOurHotel ? `
                                 <div class="mb-3">
                                     <h6><i class="bi bi-signpost"></i> Расстояние от нашего отеля</h6>
                                     <p>${hotel.distance}</p>
                                 </div>
                                 ` : ''}
-                                
+
                                 <div class="mb-3">
                                     <h6><i class="bi bi-star"></i> Услуги и удобства</h6>
                                     <div class="d-flex flex-wrap gap-2">
@@ -2954,7 +3173,7 @@ DASHBOARD_HTML = """
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="col-md-4">
                                 <div class="card">
                                     <div class="card-body text-center">
@@ -2962,7 +3181,7 @@ DASHBOARD_HTML = """
                                             ${hotel.price.toLocaleString('ru-RU')} ₽
                                         </div>
                                         <small>Цена за ночь</small>
-                                        
+
                                         ${!isOurHotel ? `
                                         <div class="mt-3">
                                             <span class="badge ${priceDiffClass}">${priceDiffText}</span>
@@ -2970,7 +3189,7 @@ DASHBOARD_HTML = """
                                         ` : ''}
                                     </div>
                                 </div>
-                                
+
                                 <div class="card mt-3">
                                     <div class="card-body text-center">
                                         <div class="d-flex align-items-center justify-content-center">
@@ -2984,7 +3203,7 @@ DASHBOARD_HTML = """
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="row mt-3">
                             <div class="col-md-6">
                                 <div class="card">
@@ -3003,7 +3222,7 @@ DASHBOARD_HTML = """
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="col-md-6">
                                 <div class="card">
                                     <div class="card-body">
@@ -3020,12 +3239,15 @@ DASHBOARD_HTML = """
                                 </div>
                             </div>
                         </div>
-                        
+
                         ${!isOurHotel ? `
                         <div class="mt-4">
                             <div class="d-flex gap-2">
                                 <button class="btn btn-primary w-50" onclick="selectHotel('${hotel.id}'); closeHotelDetailModal()">
                                     <i class="bi bi-plus-circle"></i> Добавить в анализ
+                                </button>
+                                <button class="btn btn-outline-info w-50" onclick="compareWithOurHotel('${hotel.id}')">
+                                    <i class="bi bi-arrow-left-right"></i> Сравнить
                                 </button>
                             </div>
                             <button class="btn btn-outline-danger w-100 mt-2" onclick="deleteCompetitor('${hotel.id}')">
@@ -3047,12 +3269,12 @@ DASHBOARD_HTML = """
                     </div>
                 </div>
             `;
-            
+
             // Добавляем модальное окно на страницу
             const modalContainer = document.createElement('div');
             modalContainer.innerHTML = modalHtml;
             document.body.appendChild(modalContainer);
-            
+
             // Добавляем обработчик закрытия по клику на фон
             const modalElement = document.getElementById('hotelDetailModal');
             if (modalElement) {
@@ -3063,7 +3285,7 @@ DASHBOARD_HTML = """
                 });
             }
         }
-        
+
         // Функция для закрытия модального окна
         function closeHotelDetailModal() {
             const modal = document.getElementById('hotelDetailModal');
@@ -3071,7 +3293,7 @@ DASHBOARD_HTML = """
                 modal.remove();
             }
         }
-        
+
         // Вспомогательная функция для получения звезд рейтинга
         function getRatingStars(rating) {
             let stars = '';
@@ -3086,7 +3308,192 @@ DASHBOARD_HTML = """
             }
             return stars;
         }
-        
+
+        // Функция для вызова из попапа
+        function showHotelInfoModalFromPopup(hotelId) {
+            let hotel;
+            if (hotelId === 'our_hotel') {
+                hotel = ourHotelData;
+            } else {
+                hotel = allCompetitorsData.find(h => h.id === hotelId);
+            }
+
+            if (hotel) {
+                // Закрываем попап
+                if (markers[hotelId]) {
+                    markers[hotelId].closePopup();
+                }
+
+                // Показываем модальное окно
+                showHotelInfoModal(hotel);
+            }
+        }
+
+        // Функция сравнения с нашим отелем
+        function compareWithOurHotel(competitorId) {
+            const competitor = allCompetitorsData.find(h => h.id === competitorId);
+            if (!competitor || !ourHotelData) return;
+
+            const priceDiff = competitor.price - ourHotelData.price;
+            const ratingDiff = competitor.rating - ourHotelData.rating;
+
+            let comparisonHtml = `
+                <div id="comparisonModal" class="modal-overlay" style="display: flex;">
+                    <div class="modal-content" style="max-width: 700px;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4><i class="bi bi-arrow-left-right"></i> Сравнение отелей</h4>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="closeComparisonModal()">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-center">${ourHotelData.name}</h5>
+                                        <div class="text-center mb-3">
+                                            <div class="metric-value text-primary">${ourHotelData.price.toLocaleString('ru-RU')} ₽</div>
+                                            <small>Цена за ночь</small>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <h4 class="mb-0 me-2">${ourHotelData.rating}</h4>
+                                                <div class="text-warning">
+                                                    ${getRatingStars(ourHotelData.rating)}
+                                                </div>
+                                            </div>
+                                            <small>Рейтинг</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-center">${competitor.name}</h5>
+                                        <div class="text-center mb-3">
+                                            <div class="metric-value text-primary">${competitor.price.toLocaleString('ru-RU')} ₽</div>
+                                            <small>Цена за ночь</small>
+                                        </div>
+                                        <div class="text-center">
+                                            <div class="d-flex align-items-center justify-content-center">
+                                                <h4 class="mb-0 me-2">${competitor.rating}</h4>
+                                                <div class="text-warning">
+                                                    ${getRatingStars(competitor.rating)}
+                                                </div>
+                                            </div>
+                                            <small>Рейтинг</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h6><i class="bi bi-bar-chart"></i> Сравнительный анализ</h6>
+                                        <table class="table table-bordered">
+                                            <thead>
+                                                <tr>
+                                                    <th>Параметр</th>
+                                                    <th>Наш отель</th>
+                                                    <th>Конкурент</th>
+                                                    <th>Разница</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td>Цена</td>
+                                                    <td>${ourHotelData.price.toLocaleString('ru-RU')} ₽</td>
+                                                    <td>${competitor.price.toLocaleString('ru-RU')} ₽</td>
+                                                    <td>
+                                                        <span class="badge ${priceDiff > 0 ? 'bg-danger' : priceDiff < 0 ? 'bg-success' : 'bg-warning'}">
+                                                            ${priceDiff > 0 ? '+' : ''}${priceDiff} ₽
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Рейтинг</td>
+                                                    <td>${ourHotelData.rating}</td>
+                                                    <td>${competitor.rating}</td>
+                                                    <td>
+                                                        <span class="badge ${ratingDiff > 0 ? 'bg-danger' : ratingDiff < 0 ? 'bg-success' : 'bg-warning'}">
+                                                            ${ratingDiff > 0 ? '+' : ''}${ratingDiff.toFixed(1)}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Расстояние</td>
+                                                    <td>-</td>
+                                                    <td>${competitor.distance}</td>
+                                                    <td>-</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+                                        <div class="mt-3">
+                                            <h6>Рекомендации:</h6>
+                                            <ul>
+                                                ${priceDiff > 500 ? `
+                                                <li>Конкурент значительно дороже. Рассмотрите возможность повышения цены на 5-10%</li>
+                                                ` : priceDiff < -500 ? `
+                                                <li>Конкурент значительно дешевле. Проверьте, не слишком ли высока ваша цена</li>
+                                                ` : `
+                                                <li>Цены сопоставимы. Ваша ценовая позиция оптимальна</li>
+                                                `}
+
+                                                ${ratingDiff > 0.3 ? `
+                                                <li>У конкурента выше рейтинг. Проанализируйте отзывы гостей</li>
+                                                ` : ratingDiff < -0.3 ? `
+                                                <li>Ваш рейтинг выше. Используйте это в маркетинге</li>
+                                                ` : `
+                                                <li>Рейтинги сопоставимы. Уровень сервиса аналогичен</li>
+                                                `}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <button class="btn btn-primary w-100" onclick="selectHotel('${competitor.id}'); closeComparisonModal()">
+                                <i class="bi bi-plus-circle"></i> Добавить конкурента в анализ
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Закрываем текущие модальные окна
+            closeHotelDetailModal();
+
+            // Добавляем модальное окно сравнения
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = comparisonHtml;
+            document.body.appendChild(modalContainer);
+
+            // Добавляем обработчик закрытия
+            const modalElement = document.getElementById('comparisonModal');
+            if (modalElement) {
+                modalElement.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeComparisonModal();
+                    }
+                });
+            }
+        }
+
+        function closeComparisonModal() {
+            const modal = document.getElementById('comparisonModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
     </script>
 </body>
 </html>
