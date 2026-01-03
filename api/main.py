@@ -417,6 +417,27 @@ DASHBOARD_HTML = """
             border-color: #4361ee;
             background-color: rgba(67, 97, 238, 0.05);
         }
+        
+        /* Стиль для нашего отеля в списке */
+        .hotel-card.our-hotel {
+            border: 2px solid #4361ee;
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+        
+        .hotel-card.our-hotel:hover {
+            border-color: #3a0ca3;
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.2);
+        }
+        
+        .price-badge.price-our-hotel {
+            background-color: #4361ee;
+            color: white;
+        }
+        
+        /* Подсветка нашего отеля при наведении в списке */
+        .hotel-card.our-hotel .card-title {
+            color: #4361ee;
+        }
 
         .price-badge {
             font-size: 1.1rem;
@@ -1660,19 +1681,22 @@ DASHBOARD_HTML = """
                 const data = await response.json();
 
                 ourHotelData = data.our_hotel;
-                allCompetitorsData = data.competitors; // Сохраняем все данные
+                allCompetitorsData = data.competitors;
                 ourHotelPrice = ourHotelData.price;
         
-                // Применяем фильтры сразу после загрузки
+                // Очищаем все маркеры
+                if (map) {
+                    Object.keys(markers).forEach(key => {
+                        map.removeLayer(markers[key]);
+                    });
+                }
+                markers = {};
+        
+                // Добавляем наш отель НЕЗАВИСИМО от фильтров
+                addOurHotel(ourHotelData);
+                
+                // Применяем фильтры для конкурентов
                 applyFilters();
-
-                // Обновляем статистику
-                updateStats(allCompetitorsData);
-                // Показываем список отелей
-                renderHotelsList(allCompetitorsData);
-
-                // Обновляем отображение нашего отеля
-                updateOurHotelDisplay();
 
             } catch (error) {
                 console.error('Ошибка загрузки данных карты:', error);
@@ -1688,7 +1712,7 @@ DASHBOARD_HTML = """
             const minRating = parseFloat(document.getElementById('ratingFilter').value);
             const maxDistance = parseFloat(document.getElementById('distanceFilter').value);
             
-            // Фильтруем отели
+            // Фильтруем отели (кроме нашего отеля)
             const filteredCompetitors = allCompetitorsData.filter(hotel => {
                 // Фильтр по цене
                 if (hotel.price > maxPrice) return false;
@@ -1711,7 +1735,7 @@ DASHBOARD_HTML = """
                 return true;
             });
             
-            // Очищаем все маркеры конкурентов
+            // Очищаем только маркеры конкурентов (не трогаем наш отель)
             Object.keys(markers).forEach(key => {
                 if (key !== 'our_hotel' && markers[key]) {
                     map.removeLayer(markers[key]);
@@ -1725,9 +1749,9 @@ DASHBOARD_HTML = """
                 }
             });
             
-            // Очищаем выбранные отели, которые не прошли фильтрацию
+            // Очищаем выбранные отели конкурентов, которые не прошли фильтрацию
             selectedHotels.forEach(hotelId => {
-                if (!filteredCompetitors.some(hotel => hotel.id === hotelId)) {
+                if (hotelId !== 'our_hotel' && !filteredCompetitors.some(hotel => hotel.id === hotelId)) {
                     selectedHotels.delete(hotelId);
                 }
             });
@@ -1740,10 +1764,10 @@ DASHBOARD_HTML = """
                 addCompetitorMarker(hotel);
             });
             
-            // Обновляем список отелей
-            renderHotelsList(filteredCompetitors);
+            // Обновляем список всех отелей (включая наш отель)
+            renderHotelsList([ourHotelData, ...filteredCompetitors]);
             
-            // Обновляем статистику
+            // Обновляем статистику (только по конкурентам)
             updateStats(filteredCompetitors);
             
             // Возвращаем отфильтрованные данные
@@ -1858,6 +1882,12 @@ DASHBOARD_HTML = """
 
             const hotelCard = document.getElementById(`hotel-${hotelId}`);
 
+            // Проверяем, можем ли выбрать наш отель (опционально)
+            if (hotelId === 'our_hotel') {
+                alert('Это наш отель. Вы не можете выбрать его для анализа.');
+                return;
+            }
+        
             if (selectedHotels.has(hotelId)) {
                 selectedHotels.delete(hotelId);
                 if (hotelCard) hotelCard.classList.remove('selected');
@@ -1976,42 +2006,57 @@ DASHBOARD_HTML = """
         }
         
         // Показать список отелей
-        function renderHotelsList(competitors) {
+        function renderHotelsList(hotels) {
             const container = document.getElementById('hotelsList');
             if (!container) return;
             
             container.innerHTML = '';
 
-            competitors.forEach(hotel => {
-                // Используем ourHotelData.price вместо ourHotelPrice
-                const priceDiff = hotel.price - ourHotelData.price;
+            hotels.forEach(hotel => {
+                // Для нашего отеля не считаем разницу цен
+                const isOurHotel = hotel.id === 'our_hotel';
                 let priceBadgeClass = '';
                 let priceBadgeText = '';
-
-                if (priceDiff > 500) {
-                    priceBadgeClass = 'price-higher';
-                    priceBadgeText = `+${priceDiff} ₽`;
-                } else if (priceDiff < -500) {
-                    priceBadgeClass = 'price-lower';
-                    priceBadgeText = `${priceDiff} ₽`;
+                let priceDiff = 0;
+                
+                if (!isOurHotel) {
+                    priceDiff = hotel.price - ourHotelData.price;
+                    
+                    if (priceDiff > 500) {
+                        priceBadgeClass = 'price-higher';
+                        priceBadgeText = `+${priceDiff} ₽`;
+                    } else if (priceDiff < -500) {
+                        priceBadgeClass = 'price-lower';
+                        priceBadgeText = `${priceDiff} ₽`;
+                    } else {
+                        priceBadgeClass = 'price-same';
+                        priceBadgeText = '≈';
+                    }
                 } else {
-                    priceBadgeClass = 'price-same';
-                    priceBadgeText = '≈';
+                    // Для нашего отеля используем специальный класс
+                    priceBadgeClass = 'price-our-hotel';
                 }
+                
                 // Проверяем, выбран ли отель
                 const isSelected = selectedHotels.has(hotel.id);
-
+                
+                // Создаем специальный CSS класс для нашего отеля
+                const hotelCardClass = isOurHotel ? 'hotel-card our-hotel' : 'hotel-card';
+        
                 const col = document.createElement('div');
                 col.className = 'col-md-4 mb-3';
                 col.innerHTML = `
-                    <div class="card hotel-card ${isSelected ? 'selected' : ''}" id="hotel-${hotel.id}" onclick="selectHotel('${hotel.id}')">
+                    <div class="card ${hotelCardClass} ${isSelected ? 'selected' : ''}" id="hotel-${hotel.id}" onclick="selectHotel('${hotel.id}')">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <h6 class="card-title mb-1">${hotel.name}</h6>
+                                    <h6 class="card-title mb-1">
+                                        ${hotel.name}
+                                        ${isOurHotel ? '<span class="badge bg-primary ms-2">Наш отель</span>' : ''}
+                                    </h6>
                                     <div class="d-flex align-items-center mb-2">
-                                        <span class="badge bg-warning text-dark me-2">
-                                            <i class="bi bi-star"></i> ${hotel.rating}
+                                        <span class="badge ${isOurHotel ? 'bg-primary' : 'bg-warning text-dark'} me-2">
+                                            <i class="bi ${isOurHotel ? 'bi-house-door' : 'bi-star'}"></i> ${hotel.rating}
                                         </span>
                                         <small class="text-muted">
                                             <i class="bi bi-signpost"></i> ${hotel.distance}
@@ -2025,11 +2070,11 @@ DASHBOARD_HTML = """
                                     <div class="price-badge ${priceBadgeClass}">
                                         ${hotel.price.toLocaleString('ru-RU')} ₽
                                     </div>
-                                    <small class="text-muted d-block mt-1">${priceBadgeText}</small>
+                                    ${!isOurHotel ? `<small class="text-muted d-block mt-1">${priceBadgeText}</small>` : ''}
                                 </div>
                             </div>
                             <div class="mt-3">
-                                <button class="btn btn-sm btn-outline-primary w-100" onclick="focusOnMap('${hotel.id}', event)">
+                                <button class="btn btn-sm ${isOurHotel ? 'btn-outline-primary' : 'btn-outline-secondary'} w-100" onclick="focusOnMap('${hotel.id}', event)">
                                     <i class="bi bi-map"></i> Показать на карте
                                 </button>
                             </div>
