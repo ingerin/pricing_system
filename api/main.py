@@ -549,14 +549,125 @@ DASHBOARD_HTML = """
                 <p class="mt-3">Загрузка данных...</p>
             </div>
 
-            <!-- Вкладка Обзор -->
-            <div id="overviewTab" class="tab-content">
-                <!-- ... (остается без изменений) ... -->
+             <div id="overviewTab" class="tab-content">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <i class="bi bi-currency-ruble fs-1"></i>
+                            <div class="metric-value" id="avgPrice">5,500 ₽</div>
+                            <small>Средняя цена</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <i class="bi bi-people fs-1"></i>
+                            <div class="metric-value" id="occupancyRate">78%</div>
+                            <small>Заполняемость</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <i class="bi bi-cash-stack fs-1"></i>
+                            <div class="metric-value" id="monthRevenue">12.5M ₽</div>
+                            <small>Выручка (мес.)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-card">
+                            <i class="bi bi-trophy fs-1"></i>
+                            <div class="metric-value" id="marketPosition">#3</div>
+                            <small>Позиция на рынке</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-8">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Динамика цен</h5>
+                                <canvas id="priceChart" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Быстрые действия</h5>
+                                <button class="btn-action" onclick="calculatePrice()">
+                                    <i class="bi bi-calculator"></i> Рассчитать цену
+                                </button>
+                                <button class="btn-action" onclick="analyzeCompetitors()">
+                                    <i class="bi bi-search"></i> Анализ конкурентов
+                                </button>
+                                <button class="btn-action" onclick="generateReport()">
+                                    <i class="bi bi-file-earmark-pdf"></i> Создать отчет
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Вкладка Ценообразование -->
             <div id="pricingTab" class="tab-content" style="display: none;">
-                <!-- ... (остается без изменений) ... -->
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title"><i class="bi bi-calculator"></i> Калькулятор цены</h4>
+
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Базовая цена (₽)</label>
+                                    <input type="number" class="form-control" id="basePrice" value="5000">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Сезон</label>
+                                    <select class="form-select" id="season">
+                                        <option value="0.8">Низкий сезон</option>
+                                        <option value="1.0" selected>Средний сезон</option>
+                                        <option value="1.3">Высокий сезон</option>
+                                        <option value="1.6">Пиковый сезон</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Заполняемость: <span id="occupancyValue">78%</span></label>
+                                    <input type="range" class="form-range" id="occupancySlider" min="0" max="100" value="78">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Стратегия</label>
+                                    <select class="form-select" id="strategy">
+                                        <option value="0.9">Агрессивная</option>
+                                        <option value="1.0" selected>Умеренная</option>
+                                        <option value="1.1">Консервативная</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-center">
+                            <button class="btn btn-primary btn-lg" onclick="calculateOptimalPrice()">
+                                <i class="bi bi-lightning"></i> Рассчитать оптимальную цену
+                            </button>
+                        </div>
+
+                        <div id="priceResult" class="mt-4" style="display: none;">
+                            <div class="alert alert-success">
+                                <h4><i class="bi bi-check-circle"></i> Расчет завершен!</h4>
+                                <p class="mb-2">Рекомендуемая цена:</p>
+                                <h2 class="metric-value" id="finalPrice">5,500 ₽</h2>
+                                <button class="btn-action mt-3" onclick="applyPrice()">
+                                    <i class="bi bi-check-lg"></i> Применить эту цену
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Вкладка Конкуренты -->
@@ -679,7 +790,56 @@ DASHBOARD_HTML = """
 
             <!-- Вкладка Отчеты -->
             <div id="reportsTab" class="tab-content" style="display: none;">
-                <!-- ... (остается без изменений) ... -->
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title"><i class="bi bi-file-bar-graph"></i> Управление отчетами</h4>
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-currency-exchange fs-1 text-primary"></i>
+                                        <h5>Финансовый отчет</h5>
+                                        <button class="btn btn-outline-primary mt-2" onclick="generateFinancialReport()">
+                                            Создать
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-graph-up fs-1 text-success"></i>
+                                        <h5>Анализ цен</h5>
+                                        <button class="btn btn-outline-primary mt-2" onclick="generatePricingReport()">
+                                            Создать
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-people fs-1 text-warning"></i>
+                                        <h5>Анализ конкурентов</h5>
+                                        <button class="btn btn-outline-primary mt-2" onclick="generateCompetitorReport()">
+                                            Создать
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <h5>История отчетов</h5>
+                            <div id="reportsHistory">
+                                <!-- История будет загружена -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Статус -->
