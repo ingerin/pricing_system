@@ -3187,7 +3187,7 @@ DASHBOARD_HTML = """
             // Создаем HTML для модального окна
             const modalHtml = `
                 <div id="hotelDetailModal" class="modal-overlay" style="display: flex;">
-                    <div class="modal-content" style="max-width: 600px;">
+                    <div class="modal-content" style="max-width: 700px;">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h4><i class="bi ${isOurHotel ? 'bi-house-door' : 'bi-building'}"></i> ${hotel.name}</h4>
                             <button class="btn btn-sm btn-outline-secondary" onclick="closeHotelDetailModal()">
