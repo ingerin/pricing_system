@@ -656,6 +656,18 @@ DASHBOARD_HTML = """
         .btn-edit-info:hover {
             background: #ff5252;
         }
+        
+        /* Контейнер для графика */
+        .chart-container {
+            position: relative;
+            height: 200px;
+            width: 100%;
+        }
+        
+        canvas {
+            display: block;
+            max-height: 100%;
+        }
     </style>
 </head>
 <body>
@@ -853,7 +865,9 @@ DASHBOARD_HTML = """
                         <div class="card">
                             <div class="card-body">
                                 <h5 class="card-title">Динамика цен</h5>
-                                <canvas id="priceChart" height="200"></canvas>
+                                <div class="chart-container">
+                                    <canvas id="priceChart"></canvas>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2040,6 +2054,11 @@ DASHBOARD_HTML = """
                 const ourPrices = [5000, 5200, 5100, 5300, 5500, 6000, 5800];
                 const marketPrices = [4800, 5000, 4900, 5100, 5300, 5600, 5400];
 
+                // Найдем минимальное и максимальное значения для установки границ
+                const allPrices = [...ourPrices, ...marketPrices];
+                const minValue = Math.min(...allPrices) * 0.95; // -5% от минимума
+                const maxValue = Math.max(...allPrices) * 1.05; // +5% от максимума
+        
                 priceChart = new Chart(ctx.getContext('2d'), {
                     type: 'line',
                     data: {
@@ -2052,7 +2071,11 @@ DASHBOARD_HTML = """
                                 backgroundColor: 'rgba(67, 97, 238, 0.1)',
                                 borderWidth: 3,
                                 tension: 0.3,
-                                fill: true
+                                fill: true,
+                                pointBackgroundColor: '#4361ee',
+                                pointBorderColor: '#ffffff',
+                                pointBorderWidth: 2,
+                                pointRadius: 5
                             },
                             {
                                 label: 'Средняя по рынку',
@@ -2060,7 +2083,11 @@ DASHBOARD_HTML = """
                                 borderColor: '#95a5a6',
                                 borderDash: [5, 5],
                                 borderWidth: 2,
-                                tension: 0.3
+                                tension: 0.3,
+                                pointBackgroundColor: '#95a5a6',
+                                pointBorderColor: '#ffffff',
+                                pointBorderWidth: 2,
+                                pointRadius: 5
                             }
                         ]
                     },
@@ -2070,18 +2097,65 @@ DASHBOARD_HTML = """
                         plugins: {
                             legend: {
                                 position: 'top',
+                                labels: {
+                                    padding: 20,
+                                    usePointStyle: true
+                                }
+                            },
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        label += context.parsed.y.toLocaleString('ru-RU') + ' ₽';
+                                        return label;
+                                    }
+                                }
                             }
                         },
                         scales: {
+                            x: {
+                                grid: {
+                                    display: false
+                                },
+                                ticks: {
+                                    padding: 10
+                                }
+                            },
                             y: {
                                 beginAtZero: false,
-                                suggestedMin: 4500,
-                                suggestedMax: 6500,
+                                min: Math.floor(minValue / 100) * 100, // Округляем до сотен
+                                max: Math.ceil(maxValue / 100) * 100, // Округляем до сотен
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                },
                                 ticks: {
+                                    padding: 10,
                                     callback: function(value) {
                                         return value.toLocaleString('ru-RU') + ' ₽';
                                     }
                                 }
+                            }
+                        },
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        },
+                        elements: {
+                            point: {
+                                hoverRadius: 7
+                            }
+                        },
+                        layout: {
+                            padding: {
+                                top: 20,
+                                right: 20,
+                                bottom: 10,
+                                left: 10
                             }
                         }
                     }
