@@ -660,7 +660,7 @@ DASHBOARD_HTML = """
         /* Контейнер для графика */
         .chart-container {
             position: relative;
-            height: 200px;
+            height: 500px;
             width: 100%;
         }
         
