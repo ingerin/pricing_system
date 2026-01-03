@@ -144,15 +144,33 @@ async def geocode_address(address: str):
         }
 
         response = requests.get(YANDEX_GEOCODE_URL, params=params, timeout=10)
+
+        # Добавим отладку
+        print(f"Geocode request for: {address}")
+        print(f"Response status: {response.status_code}")
+
+        if response.status_code != 200:
+            return {
+                "success": False,
+                "error": f"API error: {response.status_code}"
+            }
+
         data = response.json()
 
-        if data.get("response", {}).get("GeoObjectCollection", {}).get("featureMember"):
-            feature = data["response"]["GeoObjectCollection"]["featureMember"][0]
+        # Отладка структуры ответа
+        print(f"Response structure: {data.keys()}")
+
+        feature_members = data.get("response", {}).get("GeoObjectCollection", {}).get("featureMember", [])
+
+        if feature_members:
+            feature = feature_members[0]
             geo_object = feature["GeoObject"]
 
-            # Получаем координаты
+            # Получаем координаты (в Яндексе порядок: долгота, широта)
             pos = geo_object["Point"]["pos"]
-            lng, lat = map(float, pos.split())
+            lng_str, lat_str = pos.split()
+            lat = float(lat_str)
+            lng = float(lng_str)
 
             # Получаем полный адрес
             full_address = geo_object.get("metaDataProperty", {}).get(
@@ -172,10 +190,56 @@ async def geocode_address(address: str):
             }
 
     except Exception as e:
+        print(f"Geocode error: {e}")
         return {
             "success": False,
             "error": str(e)
         }
+
+
+@app.post("/api/search-address")
+async def search_address(request: Dict[str, Any]):
+    """Поиск адресов для подсказок"""
+    query = request.get("query", "")
+
+    if not query or len(query) < 2:
+        return {"suggestions": []}
+
+    try:
+        params = {
+            "apikey": YANDEX_MAPS_API_KEY,
+            "geocode": query,
+            "format": "json",
+            "lang": "ru_RU",
+            "results": 5  # Ограничиваем количество результатов
+        }
+
+        response = requests.get(YANDEX_GEOCODE_URL, params=params, timeout=5)
+
+        if response.status_code != 200:
+            return {"suggestions": []}
+
+        data = response.json()
+        feature_members = data.get("response", {}).get("GeoObjectCollection", {}).get("featureMember", [])
+
+        suggestions = []
+        for feature in feature_members[:5]:  # Берем первые 5
+            geo_object = feature["GeoObject"]
+            address = geo_object.get("metaDataProperty", {}).get(
+                "GeocoderMetaData", {}).get("text", "")
+
+            if address:
+                suggestions.append({
+                    "address": address,
+                    "description": geo_object.get("description", ""),
+                    "name": geo_object.get("name", "")
+                })
+
+        return {"suggestions": suggestions}
+
+    except Exception as e:
+        print(f"Search address error: {e}")
+        return {"suggestions": []}
 
 
 async def calculate_distance(coord1: Dict[str, float], coord2: Dict[str, float]):
@@ -894,54 +958,85 @@ DASHBOARD_HTML = """
 
         async function searchAddress(event = null) {
             const query = document.getElementById('addressInput').value.trim();
-
-            if (!query || query.length < 3) {
+            
+            if (!query || query.length < 2) {
                 document.getElementById('searchResults').style.display = 'none';
                 return;
             }
-
-            // Если нажата Enter
+        
+            // Если нажата Enter - сразу ищем
             if (event && event.key === 'Enter') {
                 await performGeocode(query);
                 return;
             }
-
+        
             try {
-                // Для простоты показываем примеры
-                // В реальном приложении здесь должен быть запрос к API
-                const examples = [
-                    "Москва, Красная площадь, 1",
-                    "Москва, Тверская улица, 10",
-                    "Москва, Арбат, 25",
-                    "Москва, Ленинский проспект, 90",
-                    "Москва, Пресненская набережная, 12"
-                ];
-
-                const results = examples.filter(addr => 
-                    addr.toLowerCase().includes(query.toLowerCase())
-                );
-
+                // Получаем подсказки от API
+                const response = await fetch('/api/search-address', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: query })
+                });
+        
+                const data = await response.json();
                 const resultsDiv = document.getElementById('searchResults');
                 resultsDiv.innerHTML = '';
-
-                if (results.length > 0) {
-                    results.forEach(addr => {
+                
+                if (data.suggestions && data.suggestions.length > 0) {
+                    data.suggestions.forEach(item => {
                         const div = document.createElement('div');
                         div.className = 'search-result-item';
-                        div.textContent = addr;
-                        div.onclick = () => selectAddressFromList(addr);
+                        div.textContent = item.address;
+                        div.onclick = () => selectAddressFromList(item.address);
                         resultsDiv.appendChild(div);
                     });
                     resultsDiv.style.display = 'block';
                 } else {
-                    resultsDiv.style.display = 'none';
+                    // Если нет результатов от API, показываем локальные примеры
+                    showLocalExamples(query, resultsDiv);
                 }
-
+        
             } catch (error) {
                 console.error('Ошибка поиска адреса:', error);
+                // При ошибке показываем локальные примеры
+                const resultsDiv = document.getElementById('searchResults');
+                showLocalExamples(query, resultsDiv);
             }
         }
-
+        
+        function showLocalExamples(query, resultsDiv) {
+            const examples = [
+                "Москва, Красная площадь, 1",
+                "Москва, Тверская улица, 10",
+                "Москва, Арбат, 25",
+                "Москва, Ленинский проспект, 90",
+                "Москва, Пресненская набережная, 12",
+                "Санкт-Петербург, Невский проспект, 1",
+                "Екатеринбург, улица Ленина, 1"
+            ];
+        
+            const results = examples.filter(addr => 
+                addr.toLowerCase().includes(query.toLowerCase())
+            );
+        
+            resultsDiv.innerHTML = '';
+            
+            if (results.length > 0) {
+                results.forEach(addr => {
+                    const div = document.createElement('div');
+                    div.className = 'search-result-item';
+                    div.textContent = addr;
+                    div.onclick = () => selectAddressFromList(addr);
+                    resultsDiv.appendChild(div);
+                });
+                resultsDiv.style.display = 'block';
+            } else {
+                resultsDiv.style.display = 'none';
+            }
+        }
+        
         async function performGeocode(query) {
             try {
                 const response = await fetch('/api/geocode', {
@@ -951,9 +1046,9 @@ DASHBOARD_HTML = """
                     },
                     body: JSON.stringify({ address: query })
                 });
-
+        
                 const result = await response.json();
-
+                
                 if (result.success) {
                     selectAddressFromResult(result);
                 } else {
@@ -964,19 +1059,10 @@ DASHBOARD_HTML = """
                 alert('Ошибка при поиске адреса. Проверьте подключение к интернету.');
             }
         }
-
+        
         function selectAddressFromList(address) {
-            // В реальном приложении здесь должен быть вызов API
-            // Для демо используем случайные координаты
-            const mockResult = {
-                success: true,
-                lat: 55.75 + (Math.random() - 0.5) * 0.1,
-                lng: 37.61 + (Math.random() - 0.5) * 0.1,
-                address: address,
-                coordinates: `${(55.75 + (Math.random() - 0.5) * 0.1).toFixed(6)},${(37.61 + (Math.random() - 0.5) * 0.1).toFixed(6)}`
-            };
-
-            selectAddressFromResult(mockResult);
+            // Отправляем выбранный адрес на геокодирование
+            performGeocode(address);
         }
 
         function selectAddressFromResult(result) {
@@ -1530,6 +1616,7 @@ async def api_info():
             "pricing": "/api/pricing/calculate",
             "reports": "/api/reports/summary",
             "geocode": "/api/geocode",
+            "search_address": "/api/search-address",
             "update_address": "/api/hotel/update-address",
             "health": "/health"
         }
