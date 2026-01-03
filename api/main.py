@@ -1033,7 +1033,7 @@ DASHBOARD_HTML = """
                                 <div class="col-md-4">
                                     <label class="form-label">Минимальный рейтинг</label>
                                     <select class="form-select" id="ratingFilter">
-                                        <option value="0">Все</option>
+                                        <option value="0" selected>Все</option>
                                         <option value="4">4.0+</option>
                                         <option value="4.5">4.5+</option>
                                         <option value="4.7">4.7+</option>
@@ -1042,7 +1042,7 @@ DASHBOARD_HTML = """
                                 <div class="col-md-4">
                                     <label class="form-label">Расстояние</label>
                                     <select class="form-select" id="distanceFilter">
-                                        <option value="5">Все</option>
+                                        <option value="5" selected>Все</option>
                                         <option value="2">До 2 км</option>
                                         <option value="1" selected>До 1 км</option>
                                         <option value="0.5">До 500 м</option>
