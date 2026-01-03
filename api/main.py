@@ -44,6 +44,15 @@ class ReportRequest(BaseModel):
     format: str = "pdf"
 
 
+class HotelAddressUpdate(BaseModel):
+    hotel_id: str
+    name: str
+    address: str
+    lat: float
+    lng: float
+    city: str = "Москва"
+
+
 # Данные для карты (тестовые координаты)
 COMPETITORS_DATA = {
     "our_hotel": {
@@ -55,7 +64,8 @@ COMPETITORS_DATA = {
         "rating": 4.5,
         "color": "#4361ee",
         "address": "Красная площадь, 1",
-        "distance": "0 км"
+        "distance": "0 км",
+        "city": "Москва"
     },
     "competitors": [
         {
@@ -218,7 +228,21 @@ DASHBOARD_HTML = """
             border-radius: 5px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-
+        
+        .address-result {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .address-result:hover {
+            background-color: #f8f9fa;
+            transform: translateX(5px);
+        }
+        
+        .address-result.border-primary {
+            border-width: 2px !important;
+        }
+        
         .legend {
             position: absolute;
             bottom: 10px;
@@ -503,29 +527,56 @@ DASHBOARD_HTML = """
 
                         <!-- Фильтры -->
                         <div class="filter-panel">
-                            <div class="row">
-                                <div class="col-md-4">
-                                    <label class="form-label">Ценовой диапазон</label>
-                                    <input type="range" class="form-range" id="priceFilter" min="3000" max="10000" value="10000">
-                                    <small>До: <span id="priceFilterValue">10,000 ₽</span></small>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h5 class="card-title"><i class="bi bi-geo-alt"></i> Наш отель</h5>
+                                            <div id="currentAddress" class="mb-2">
+                                                <p class="mb-1"><strong id="hotelName">Наш отель (Central Plaza)</strong></p>
+                                                <p class="mb-1 text-muted" id="hotelAddress">Красная площадь, 1, Москва</p>
+                                                <p class="mb-0">
+                                                    <span class="badge bg-primary" id="hotelPrice">5,500 ₽</span>
+                                                    <span class="badge bg-warning text-dark ms-2" id="hotelRating">4.5 ★</span>
+                                                </p>
+                                            </div>
+                                            <button class="btn btn-outline-primary btn-sm w-100" onclick="showAddressModal()">
+                                                <i class="bi bi-pencil"></i> Изменить адрес
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Минимальный рейтинг</label>
-                                    <select class="form-select" id="ratingFilter">
-                                        <option value="0">Все</option>
-                                        <option value="4">4.0+</option>
-                                        <option value="4.5">4.5+</option>
-                                        <option value="4.7">4.7+</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Расстояние</label>
-                                    <select class="form-select" id="distanceFilter">
-                                        <option value="5">Все</option>
-                                        <option value="2">До 2 км</option>
-                                        <option value="1" selected>До 1 км</option>
-                                        <option value="0.5">До 500 м</option>
-                                    </select>
+                                <div class="col-md-6">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <h5 class="card-title"><i class="bi bi-funnel"></i> Фильтры</h5>
+                                            <div class="row">
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Цена до:</label>
+                                                    <input type="range" class="form-range" id="priceFilter" min="3000" max="10000" value="10000">
+                                                    <small><span id="priceFilterValue">10,000 ₽</span></small>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Рейтинг:</label>
+                                                    <select class="form-select form-select-sm" id="ratingFilter">
+                                                        <option value="0">Все</option>
+                                                        <option value="4">4.0+</option>
+                                                        <option value="4.5">4.5+</option>
+                                                        <option value="4.7">4.7+</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <label class="form-label small">Расстояние:</label>
+                                                    <select class="form-select form-select-sm" id="distanceFilter">
+                                                        <option value="5">Все</option>
+                                                        <option value="2">До 2 км</option>
+                                                        <option value="1" selected>До 1 км</option>
+                                                        <option value="0.5">До 500 м</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -981,7 +1032,207 @@ DASHBOARD_HTML = """
         function resetView() {
             if (map) map.setView([55.7558, 37.6173], 14);
         }
-
+        
+        // Показать модальное окно смены адреса
+        function showAddressModal() {
+            // Загружаем текущие данные
+            fetch('/api/hotel/address')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('modalHotelName').value = data.name;
+                    document.getElementById('modalAddress').value = data.address;
+                    document.getElementById('modalCity').value = data.city || 'Москва';
+                    document.getElementById('modalLat').value = data.lat;
+                    document.getElementById('modalLng').value = data.lng;
+                    
+                    // Показываем модальное окно
+                    new bootstrap.Modal(document.getElementById('addressModal')).show();
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки адреса:', error);
+                    new bootstrap.Modal(document.getElementById('addressModal')).show();
+                });
+        }
+        
+        // Поиск адреса
+        function searchAddress() {
+            const query = document.getElementById('addressSearch').value;
+            if (!query.trim()) {
+                alert('Введите адрес для поиска');
+                return;
+            }
+            
+            document.getElementById('searchResults').style.display = 'block';
+            document.getElementById('addressResultsList').innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm"></div> Поиск...</div>';
+            
+            fetch(`/api/hotel/address/search?query=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    let html = '';
+                    if (data.results.length === 0) {
+                        html = '<p class="text-muted">Ничего не найдено</p>';
+                    } else {
+                        data.results.forEach((result, index) => {
+                            html += `
+                                <div class="card mb-2 address-result" onclick="selectAddress(${index})" 
+                                     data-name="${result.name}" 
+                                     data-address="${result.address}"
+                                     data-lat="${result.lat}"
+                                     data-lng="${result.lng}"
+                                     data-city="${result.city}">
+                                    <div class="card-body p-2">
+                                        <h6 class="card-title mb-1">${result.name}</h6>
+                                        <p class="card-text small text-muted mb-1">${result.address}</p>
+                                        <small class="text-muted">Координаты: ${result.lat.toFixed(6)}, ${result.lng.toFixed(6)}</small>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                    document.getElementById('addressResultsList').innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Ошибка поиска адреса:', error);
+                    document.getElementById('addressResultsList').innerHTML = '<p class="text-danger">Ошибка поиска адреса</p>';
+                });
+        }
+        
+        // Выбрать адрес из результатов
+        function selectAddress(index) {
+            const resultElement = document.querySelectorAll('.address-result')[index];
+            if (resultElement) {
+                document.getElementById('modalHotelName').value = resultElement.dataset.name;
+                document.getElementById('modalAddress').value = resultElement.dataset.address;
+                document.getElementById('modalCity').value = resultElement.dataset.city;
+                document.getElementById('modalLat').value = resultElement.dataset.lat;
+                document.getElementById('modalLng').value = resultElement.dataset.lng;
+                
+                // Подсвечиваем выбранный результат
+                document.querySelectorAll('.address-result').forEach(el => {
+                    el.classList.remove('border-primary');
+                });
+                resultElement.classList.add('border-primary');
+            }
+        }
+        
+        // Сохранить адрес
+        function saveAddress() {
+            const hotelData = {
+                hotel_id: 'our_hotel',
+                name: document.getElementById('modalHotelName').value,
+                address: document.getElementById('modalAddress').value,
+                lat: parseFloat(document.getElementById('modalLat').value),
+                lng: parseFloat(document.getElementById('modalLng').value),
+                city: document.getElementById('modalCity').value
+            };
+            
+            if (!hotelData.name || !hotelData.address) {
+                alert('Заполните название и адрес отеля');
+                return;
+            }
+            
+            fetch('/api/hotel/address/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(hotelData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Обновляем отображение
+                    updateHotelDisplay(data.hotel);
+                    // Обновляем карту
+                    updateOurHotelOnMap(data.hotel);
+                    // Закрываем модальное окно
+                    bootstrap.Modal.getInstance(document.getElementById('addressModal')).hide();
+                    // Показываем уведомление
+                    alert('Адрес успешно обновлен!');
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка сохранения адреса:', error);
+                alert('Ошибка сохранения адреса');
+            });
+        }
+        
+        // Обновить отображение адреса на странице
+        function updateHotelDisplay(hotel) {
+            document.getElementById('hotelName').textContent = hotel.name;
+            document.getElementById('hotelAddress').textContent = hotel.address;
+            document.getElementById('hotelPrice').textContent = hotel.price.toLocaleString('ru-RU') + ' ₽';
+            document.getElementById('hotelRating').textContent = hotel.rating + ' ★';
+        }
+        
+        // Обновить наш отель на карте
+        function updateOurHotelOnMap(hotel) {
+            // Удаляем старый маркер
+            if (markers['our_hotel']) {
+                map.removeLayer(markers['our_hotel']);
+            }
+            
+            // Создаем новый маркер
+            const icon = L.divIcon({
+                className: 'custom-icon',
+                html: `
+                    <div style="
+                        background-color: ${hotel.color};
+                        width: 40px;
+                        height: 40px;
+                        border-radius: 50%;
+                        border: 3px solid white;
+                        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: white;
+                        font-size: 20px;
+                    ">
+                        <i class="bi bi-house-door"></i>
+                    </div>
+                `,
+                iconSize: [40, 40]
+            });
+            
+            const marker = L.marker([hotel.lat, hotel.lng], { icon: icon })
+                .addTo(map)
+                .bindPopup(`
+                    <div style="min-width: 200px;">
+                        <h6><b>${hotel.name}</b></h6>
+                        <p><i class="bi bi-geo-alt"></i> ${hotel.address}</p>
+                        <p><i class="bi bi-cash"></i> <b>${hotel.price.toLocaleString('ru-RU')} ₽</b></p>
+                        <p><i class="bi bi-star"></i> ${hotel.rating} ★</p>
+                    </div>
+                `);
+            
+            markers['our_hotel'] = marker;
+            
+            // Центрируем карту на новом местоположении
+            map.setView([hotel.lat, hotel.lng], 14);
+        }
+        
+        // Загрузить данные об отеле при инициализации
+        function loadHotelData() {
+            fetch('/api/hotel/address')
+                .then(response => response.json())
+                .then(data => {
+                    updateHotelDisplay(data);
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки данных отеля:', error);
+                });
+        }
+        
+        // Обновить инициализацию
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDashboardData();
+            updateTime();
+            checkApiStatus();
+            loadHotelData(); // Загружаем данные отеля
+            setInterval(updateTime, 60000);
+        });
+        
         // Фильтр цены
         document.getElementById('priceFilter').addEventListener('input', function(e) {
             document.getElementById('priceFilterValue').textContent = 
@@ -1122,6 +1373,80 @@ DASHBOARD_HTML = """
             document.getElementById('occupancyValue').textContent = e.target.value + '%';
         });
     </script>
+    <div class="modal fade" id="addressModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-geo-alt"></i> Изменить адрес отеля</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Название отеля</label>
+                                <input type="text" class="form-control" id="modalHotelName" value="Наш отель">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Поиск адреса</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="addressSearch" placeholder="Введите адрес...">
+                                    <button class="btn btn-primary" onclick="searchAddress()">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="searchResults" style="max-height: 300px; overflow-y: auto; display: none;">
+                                <h6>Результаты поиска:</h6>
+                                <div id="addressResultsList"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Город</label>
+                                <select class="form-select" id="modalCity">
+                                    <option value="Москва" selected>Москва</option>
+                                    <option value="Санкт-Петербург">Санкт-Петербург</option>
+                                    <option value="Казань">Казань</option>
+                                    <option value="Сочи">Сочи</option>
+                                    <option value="Екатеринбург">Екатеринбург</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Адрес</label>
+                                <textarea class="form-control" id="modalAddress" rows="3" placeholder="Полный адрес"></textarea>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Широта (lat)</label>
+                                        <input type="number" step="0.000001" class="form-control" id="modalLat" value="55.7558">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Долгота (lng)</label>
+                                        <input type="number" step="0.000001" class="form-control" id="modalLng" value="37.6173">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="alert alert-info">
+                                <small>
+                                    <i class="bi bi-info-circle"></i> Координаты можно получить из Google Maps или Яндекс.Карт
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                    <button type="button" class="btn btn-primary" onclick="saveAddress()">
+                        <i class="bi bi-check-lg"></i> Сохранить адрес
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
 """
@@ -1356,6 +1681,95 @@ async def apply_price(hotel_id: str, price: float, room_type: str = "standard"):
         "new_price": price,
         "room_type": room_type,
         "applied_at": datetime.now().isoformat()
+    }
+
+
+@app.get("/api/hotel/address")
+async def get_hotel_address():
+    """Получить текущий адрес нашего отеля"""
+    return COMPETITORS_DATA["our_hotel"]
+
+
+@app.post("/api/hotel/address/update")
+async def update_hotel_address(update: HotelAddressUpdate):
+    """Обновить адрес нашего отеля"""
+    try:
+        COMPETITORS_DATA["our_hotel"] = {
+            "id": "our_hotel",
+            "name": update.name,
+            "lat": update.lat,
+            "lng": update.lng,
+            "price": COMPETITORS_DATA["our_hotel"]["price"],  # Сохраняем цену
+            "rating": COMPETITORS_DATA["our_hotel"]["rating"],  # Сохраняем рейтинг
+            "color": "#4361ee",
+            "address": update.address,
+            "distance": "0 км",
+            "city": update.city
+        }
+
+        return {
+            "success": True,
+            "message": "Адрес отеля успешно обновлен",
+            "hotel": COMPETITORS_DATA["our_hotel"],
+            "updated_at": datetime.now().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/hotel/address/search")
+async def search_address(query: str):
+    """Поиск адресов (заглушка для геокодинга)"""
+    # В реальном приложении здесь будет вызов геокодингового API
+    # Например: Яндекс.Карты, Google Maps, OpenStreetMap
+
+    # Тестовые результаты для Москвы
+    test_results = [
+        {
+            "name": "Красная площадь, 1",
+            "address": "Красная площадь, 1, Москва",
+            "lat": 55.754047,
+            "lng": 37.620409,
+            "city": "Москва"
+        },
+        {
+            "name": "ул. Тверская, 15",
+            "address": "ул. Тверская, 15, Москва",
+            "lat": 55.760428,
+            "lng": 37.606839,
+            "city": "Москва"
+        },
+        {
+            "name": "Кремль",
+            "address": "Московский Кремль, Москва",
+            "lat": 55.751244,
+            "lng": 37.618423,
+            "city": "Москва"
+        },
+        {
+            "name": "Москва-Сити",
+            "address": "Пресненская набережная, Москва",
+            "lat": 55.748710,
+            "lng": 37.539712,
+            "city": "Москва"
+        },
+        {
+            "name": "ВДНХ",
+            "address": "проспект Мира, 119, Москва",
+            "lat": 55.829493,
+            "lng": 37.631676,
+            "city": "Москва"
+        }
+    ]
+
+    # Фильтрация результатов по запросу
+    filtered_results = [r for r in test_results if
+                        query.lower() in r["name"].lower() or query.lower() in r["address"].lower()]
+
+    return {
+        "query": query,
+        "results": filtered_results if filtered_results else test_results[:3],
+        "count": len(filtered_results) if filtered_results else 3
     }
 
 
