@@ -1181,8 +1181,9 @@ DASHBOARD_HTML = """
         let ourHotelPrice = 5500;
         let ourHotelData = null;
         let selectedAddress = null;
-        let priceChart = null; // Глобальная переменная для графика
-
+        let priceChart = null;
+        let allCompetitorsData = [];
+        
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
             loadDashboardData();
@@ -1209,6 +1210,34 @@ DASHBOARD_HTML = """
                     closeHotelInfoModal();
                 }
             });
+            // Добавляем обработчики для фильтров
+            const priceFilterElement = document.getElementById('priceFilter');
+            const ratingFilterElement = document.getElementById('ratingFilter');
+            const distanceFilterElement = document.getElementById('distanceFilter');
+            
+            if (priceFilterElement) {
+                priceFilterElement.addEventListener('input', function(e) {
+                    const priceFilterValueElement = document.getElementById('priceFilterValue');
+                    if (priceFilterValueElement) {
+                        priceFilterValueElement.textContent = 
+                            parseInt(e.target.value).toLocaleString('ru-RU') + ' ₽';
+                    }
+                    // Применяем фильтры при изменении
+                    applyFilters();
+                });
+            }
+            
+            if (ratingFilterElement) {
+                ratingFilterElement.addEventListener('change', function() {
+                    applyFilters();
+                });
+            }
+            
+            if (distanceFilterElement) {
+                distanceFilterElement.addEventListener('change', function() {
+                    applyFilters();
+                });
+            }
         });
 
         // ===== ФУНКЦИИ ДЛЯ ИЗМЕНЕНИЯ АДРЕСА =====
@@ -1382,7 +1411,9 @@ DASHBOARD_HTML = """
 
                     // Центрируем карту на новом местоположении
                     map.setView([selectedAddress.lat, selectedAddress.lng], 15);
-
+                    
+                    applyFilters();
+                    
                     alert('Адрес успешно изменен!');
                     closeAddressModal();
 
@@ -1555,6 +1586,9 @@ DASHBOARD_HTML = """
                     // Обновляем статистику
                     updateStats(competitorsData.competitors);
                     
+                    // Применяем фильтры после обновления
+                    applyFilters();
+                    
                     alert('Информация об отеле успешно обновлена!');
                     closeHotelInfoModal();
                     
@@ -1626,29 +1660,16 @@ DASHBOARD_HTML = """
                 const data = await response.json();
 
                 ourHotelData = data.our_hotel;
-                // Устанавливаем глобальную переменную ourHotelPrice для совместимости
+                allCompetitorsData = data.competitors; // Сохраняем все данные
                 ourHotelPrice = ourHotelData.price;
         
-                // Очищаем все маркеры
-                if (map) {
-                    Object.keys(markers).forEach(key => {
-                        map.removeLayer(markers[key]);
-                    });
-                }
-                markers = {};
-
-                // Добавляем наш отель
-                addOurHotel(ourHotelData);
-
-                // Добавляем конкурентов
-                data.competitors.forEach(hotel => {
-                    addCompetitorMarker(hotel);
-                });
+                // Применяем фильтры сразу после загрузки
+                applyFilters();
 
                 // Обновляем статистику
-                updateStats(data.competitors);
+                updateStats(allCompetitorsData);
                 // Показываем список отелей
-                renderHotelsList(data.competitors);
+                renderHotelsList(allCompetitorsData);
 
                 // Обновляем отображение нашего отеля
                 updateOurHotelDisplay();
@@ -1657,7 +1678,78 @@ DASHBOARD_HTML = """
                 console.error('Ошибка загрузки данных карты:', error);
             }
         }
-    
+        
+        // Функция применения фильтров
+        function applyFilters() {
+            if (!map || !allCompetitorsData.length) return;
+            
+            // Получаем значения фильтров
+            const maxPrice = parseInt(document.getElementById('priceFilter').value);
+            const minRating = parseFloat(document.getElementById('ratingFilter').value);
+            const maxDistance = parseFloat(document.getElementById('distanceFilter').value);
+            
+            // Фильтруем отели
+            const filteredCompetitors = allCompetitorsData.filter(hotel => {
+                // Фильтр по цене
+                if (hotel.price > maxPrice) return false;
+                
+                // Фильтр по рейтингу
+                if (minRating > 0 && hotel.rating < minRating) return false;
+                
+                // Фильтр по расстоянию (извлекаем числовое значение)
+                const distanceStr = hotel.distance;
+                let distanceNum = 0;
+                
+                if (distanceStr.includes('км')) {
+                    distanceNum = parseFloat(distanceStr);
+                } else if (distanceStr.includes('м')) {
+                    distanceNum = parseInt(distanceStr) / 1000;
+                }
+                
+                if (maxDistance < 5 && distanceNum > maxDistance) return false;
+                
+                return true;
+            });
+            
+            // Очищаем все маркеры конкурентов
+            Object.keys(markers).forEach(key => {
+                if (key !== 'our_hotel' && markers[key]) {
+                    map.removeLayer(markers[key]);
+                }
+            });
+            
+            // Удаляем только маркеры конкурентов из объекта markers
+            Object.keys(markers).forEach(key => {
+                if (key !== 'our_hotel') {
+                    delete markers[key];
+                }
+            });
+            
+            // Очищаем выбранные отели, которые не прошли фильтрацию
+            selectedHotels.forEach(hotelId => {
+                if (!filteredCompetitors.some(hotel => hotel.id === hotelId)) {
+                    selectedHotels.delete(hotelId);
+                }
+            });
+            
+            // Обновляем список выбранных
+            updateSelectedList();
+            
+            // Добавляем отфильтрованных конкурентов
+            filteredCompetitors.forEach(hotel => {
+                addCompetitorMarker(hotel);
+            });
+            
+            // Обновляем список отелей
+            renderHotelsList(filteredCompetitors);
+            
+            // Обновляем статистику
+            updateStats(filteredCompetitors);
+            
+            // Возвращаем отфильтрованные данные
+            return filteredCompetitors;
+        }
+        
         // Добавить наш отель на карту
         function addOurHotel(hotel) {
             const icon = L.divIcon({
@@ -1906,11 +1998,13 @@ DASHBOARD_HTML = """
                     priceBadgeClass = 'price-same';
                     priceBadgeText = '≈';
                 }
+                // Проверяем, выбран ли отель
+                const isSelected = selectedHotels.has(hotel.id);
 
                 const col = document.createElement('div');
                 col.className = 'col-md-4 mb-3';
                 col.innerHTML = `
-                    <div class="card hotel-card" id="hotel-${hotel.id}" onclick="selectHotel('${hotel.id}')">
+                    <div class="card hotel-card ${isSelected ? 'selected' : ''}" id="hotel-${hotel.id}" onclick="selectHotel('${hotel.id}')">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
