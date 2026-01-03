@@ -2010,7 +2010,8 @@ DASHBOARD_HTML = """
                 console.error('Ошибка загрузки данных:', error);
             }
         }
-
+        let priceChart = null; // Добавьте эту глобальную переменную в начало скрипта
+        
         function createPriceChart() {
             const ctx = document.getElementById('priceChart');
             if (!ctx) {
@@ -2019,11 +2020,16 @@ DASHBOARD_HTML = """
             }
             
             try {
+                // Если график уже существует, уничтожаем его
+                if (priceChart) {
+                    priceChart.destroy();
+                }
+                
                 const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
                 const ourPrices = [5000, 5200, 5100, 5300, 5500, 6000, 5800];
                 const marketPrices = [4800, 5000, 4900, 5100, 5300, 5600, 5400];
 
-                new Chart(ctx.getContext('2d'), {
+                priceChart = new Chart(ctx.getContext('2d'), {
                     type: 'line',
                     data: {
                         labels: labels,
@@ -2034,7 +2040,8 @@ DASHBOARD_HTML = """
                                 borderColor: '#4361ee',
                                 backgroundColor: 'rgba(67, 97, 238, 0.1)',
                                 borderWidth: 3,
-                                tension: 0.3
+                                tension: 0.3,
+                                fill: true
                             },
                             {
                                 label: 'Средняя по рынку',
@@ -2052,6 +2059,18 @@ DASHBOARD_HTML = """
                         plugins: {
                             legend: {
                                 position: 'top',
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                min: 2000, // Установите минимальное значение
+                                max: 20000, // Установите максимальное значение
+                                ticks: {
+                                    callback: function(value) {
+                                        return value.toLocaleString('ru-RU') + ' ₽';
+                                    }
+                                }
                             }
                         }
                     }
