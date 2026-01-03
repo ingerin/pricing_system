@@ -1458,6 +1458,19 @@ DASHBOARD_HTML = """
                 parseInt(e.target.value).toLocaleString('ru-RU') + ' ₽';
         });
 
+        // Генерация отчетов
+        function generateFinancialReport() {
+            alert('Финансовый отчет генерируется...');
+        }
+
+        function generatePricingReport() {
+            alert('Отчет по ценам генерируется...');
+        }
+
+        function generateCompetitorReport() {
+            alert('Отчет по конкурентам генерируется...');
+        }
+        
         // Остальные функции (без изменений)
         function updateTime() {
             const now = new Date();
