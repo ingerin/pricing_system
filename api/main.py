@@ -1445,7 +1445,7 @@ DASHBOARD_HTML = """
         let map = null;
         let markers = {};
         let selectedHotels = new Set();
-        let ourHotelPrice = 5500;
+        let ourHotelPrice = null;
         let ourHotelData = null;
         let selectedAddress = null;
         let priceChart = null;
@@ -1454,12 +1454,14 @@ DASHBOARD_HTML = """
 
         // Инициализация при загрузке
         document.addEventListener('DOMContentLoaded', function() {
+        loadCurrentHotelInfo().then(() => {
             loadDashboardData();
             updateTime();
             checkApiStatus();
             setInterval(updateTime, 60000);
             initRatingStars();
-
+        });
+        
             // Добавляем обработчики для модальных окон
             document.getElementById('addressModal').addEventListener('click', function(e) {
                 if (e.target === this) {
@@ -1748,6 +1750,12 @@ DASHBOARD_HTML = """
 
                 ourHotelData = data.our_hotel;
 
+                // Проверяем, что данные загрузились
+                if (!ourHotelData) {
+                    console.error('Данные отеля не загрузились');
+                    return;
+                }
+        
                 // Обновляем текущие значения
                 document.getElementById('currentName').textContent = ourHotelData.name;
                 document.getElementById('currentPrice').textContent = ourHotelData.price.toLocaleString('ru-RU') + ' ₽';
@@ -1768,14 +1776,20 @@ DASHBOARD_HTML = """
                 // Обновляем информацию в боковой панели
                 updateOurHotelDisplay();
 
+                return ourHotelData;
+        
             } catch (error) {
                 console.error('Ошибка загрузки данных отеля:', error);
                 alert('Ошибка загрузки данных отеля');
+                return null;
             }
         }
 
         function updateOurHotelDisplay() {
-            if (!ourHotelData) return;
+            if (!ourHotelData) {
+                console.warn('ourHotelData не инициализирована в updateOurHotelDisplay');
+                return;
+            }
 
             const priceDisplay = document.getElementById('ourHotelPriceDisplay');
             const ratingDisplay = document.getElementById('ourHotelRatingDisplay');
@@ -2380,6 +2394,10 @@ DASHBOARD_HTML = """
 
         // Добавить маркер конкурента
         function addCompetitorMarker(hotel) {
+            if (!ourHotelData) {
+                console.warn('ourHotelData не инициализирована в addCompetitorMarker');
+                return;
+            }
             // Используем ourHotelData.price вместо глобальной переменной ourHotelPrice
             const priceDiff = hotel.price - ourHotelData.price;
             let priceClass = '';
@@ -2592,6 +2610,16 @@ DASHBOARD_HTML = """
 
         // Функция для перерисовки всех маркеров конкурентов
         function redrawAllCompetitorMarkers(competitors) {
+            if (!map) {
+                console.warn('Карта не инициализирована');
+                return;
+            }
+            
+            if (!ourHotelData) {
+                console.warn('ourHotelData не инициализирована');
+                return;
+            }
+            
             // Удаляем все маркеры конкурентов
             Object.keys(markers).forEach(key => {
                 if (key !== 'our_hotel' && markers[key]) {
@@ -2600,9 +2628,11 @@ DASHBOARD_HTML = """
             });
 
             // Добавляем маркеры конкурентов с новыми цветами
-            competitors.forEach(hotel => {
-                addCompetitorMarker(hotel);
-            });
+            if (competitors && competitors.length > 0) {
+                competitors.forEach(hotel => {
+                    addCompetitorMarker(hotel);
+                });
+            }
         }
 
         // Показать список отелей
@@ -2992,7 +3022,10 @@ DASHBOARD_HTML = """
 
         async function applyPrice() {
             const finalPriceElement = document.getElementById('finalPrice');
-            if (!finalPriceElement) return;
+            if (!finalPriceElement) {
+                alert('Элемент с ценой не найден');
+                return;
+            }
             
             // Извлекаем цену из текста (убираем пробелы и символ ₽)
             const priceText = finalPriceElement.textContent;
@@ -3000,6 +3033,23 @@ DASHBOARD_HTML = """
             
             if (isNaN(price) || price < 1000 || price > 50000) {
                 alert('Некорректная цена. Пожалуйста, пересчитайте ещё раз.');
+                return;
+            }
+            
+            // Проверяем, загружены ли данные о нашем отеле
+            if (!ourHotelData) {
+                // Если данные не загружены, загружаем их
+                try {
+                    await loadCurrentHotelInfo();
+                } catch (error) {
+                    alert('Не удалось загрузить данные отеля. Пожалуйста, обновите страницу.');
+                    return;
+                }
+            }
+            
+            // Проверяем еще раз после загрузки
+            if (!ourHotelData) {
+                alert('Данные отеля не загружены. Пожалуйста, обновите страницу.');
                 return;
             }
             
@@ -3020,28 +3070,26 @@ DASHBOARD_HTML = """
                 
                 if (result.success) {
                     // Обновляем данные нашего отеля локально
-                    if (ourHotelData) {
-                        ourHotelData.price = price;
-                    }
+                    ourHotelData.price = price;
                     
                     // Обновляем отображение цены
                     updateOurHotelDisplay();
                     
-                    // Обновляем маркер нашего отеля на карте
-                    if (markers.our_hotel) {
+                    // Обновляем маркер нашего отеля на карте (если карта инициализирована)
+                    if (map && markers.our_hotel) {
                         map.removeLayer(markers.our_hotel);
                         addOurHotel(ourHotelData);
                     }
                     
-                    // Перерисовываем маркеры конкурентов с новыми цветами
-                    const competitors = await getCompetitorsData();
-                    redrawAllCompetitorMarkers(competitors);
+                    // Перерисовываем маркеры конкурентов с новыми цветами (если они есть)
+                    if (map && allCompetitorsData && allCompetitorsData.length > 0) {
+                        redrawAllCompetitorMarkers(allCompetitorsData);
+                    }
                     
-                    // Применяем фильтры
-                    applyFilters();
-                    
-                    // Обновляем статистику
-                    updateStats(competitors);
+                    // Применяем фильтры (если мы на вкладке конкурентов)
+                    if (document.getElementById('competitorsTab').style.display !== 'none') {
+                        applyFilters();
+                    }
                     
                     alert('Цена успешно применена! Новая цена: ' + price.toLocaleString('ru-RU') + ' ₽');
                     
