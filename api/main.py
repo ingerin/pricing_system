@@ -1153,7 +1153,7 @@ DASHBOARD_HTML = """
         </div>
     </div>
 
-    <!-- Leaflet JS -->
+        <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // Глобальные переменные
@@ -1171,6 +1171,25 @@ DASHBOARD_HTML = """
             checkApiStatus();
             setInterval(updateTime, 60000);
             initRatingStars();
+            
+            // Добавляем обработчики для модальных окон
+            document.getElementById('addressModal').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeAddressModal();
+                }
+            });
+            
+            document.getElementById('hotelInfoModal').addEventListener('click', function(e) {
+                if (e.target === this) closeHotelInfoModal();
+            });
+            
+            // Закрытие модальных окон по Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeAddressModal();
+                    closeHotelInfoModal();
+                }
+            });
         });
 
         // ===== ФУНКЦИИ ДЛЯ ИЗМЕНЕНИЯ АДРЕСА =====
@@ -1365,6 +1384,8 @@ DASHBOARD_HTML = """
         function initRatingStars() {
             // Инициализация звезд рейтинга
             const ratingStars = document.getElementById('ratingStars');
+            if (!ratingStars) return;
+            
             ratingStars.innerHTML = '';
             for (let i = 0; i < 5; i++) {
                 const star = document.createElement('i');
@@ -1375,6 +1396,8 @@ DASHBOARD_HTML = """
         
         function updateRatingStars(rating) {
             const stars = document.querySelectorAll('#ratingStars .star-icon');
+            if (!stars.length) return;
+            
             stars.forEach((star, index) => {
                 if (index < Math.floor(rating)) {
                     star.className = 'bi bi-star-fill star-icon';
@@ -1572,6 +1595,9 @@ DASHBOARD_HTML = """
                 // Показываем список отелей
                 renderHotelsList(data.competitors);
 
+                // Обновляем отображение нашего отеля
+                updateOurHotelDisplay();
+
             } catch (error) {
                 console.error('Ошибка загрузки данных карты:', error);
             }
@@ -1758,22 +1784,32 @@ DASHBOARD_HTML = """
 
         // Обновить статистику
         function updateStats(competitors) {
+            if (!ourHotelData) return;
+            
             const avgPrice = competitors.reduce((sum, hotel) => sum + hotel.price, 0) / competitors.length;
             document.getElementById('statsAvgPrice').textContent = Math.round(avgPrice).toLocaleString('ru-RU') + ' ₽';
             document.getElementById('statsTotal').textContent = competitors.length;
             
             // Обновляем статистику в модальном окне
-            document.getElementById('avgCompetitorPrice').textContent = Math.round(avgPrice).toLocaleString('ru-RU') + ' ₽';
+            const avgCompetitorPriceElement = document.getElementById('avgCompetitorPrice');
+            if (avgCompetitorPriceElement) {
+                avgCompetitorPriceElement.textContent = Math.round(avgPrice).toLocaleString('ru-RU') + ' ₽';
+            }
             
             // Рассчитываем позицию на рынке
             const sortedPrices = [...competitors.map(h => h.price), ourHotelData.price].sort((a, b) => a - b);
             const position = sortedPrices.indexOf(ourHotelData.price) + 1;
-            document.getElementById('marketPositionStat').textContent = `#${position}`;
+            const marketPositionElement = document.getElementById('marketPositionStat');
+            if (marketPositionElement) {
+                marketPositionElement.textContent = `#${position}`;
+            }
         }
 
         // Показать список отелей
         function renderHotelsList(competitors) {
             const container = document.getElementById('hotelsList');
+            if (!container) return;
+            
             container.innerHTML = '';
 
             competitors.forEach(hotel => {
@@ -1851,14 +1887,22 @@ DASHBOARD_HTML = """
         }
 
         function resetView() {
-            if (map) map.setView([ourHotelData.lat, ourHotelData.lng], 14);
+            if (map && ourHotelData) {
+                map.setView([ourHotelData.lat, ourHotelData.lng], 14);
+            }
         }
 
         // Фильтр цены
-        document.getElementById('priceFilter').addEventListener('input', function(e) {
-            document.getElementById('priceFilterValue').textContent = 
-                parseInt(e.target.value).toLocaleString('ru-RU') + ' ₽';
-        });
+        const priceFilterElement = document.getElementById('priceFilter');
+        if (priceFilterElement) {
+            priceFilterElement.addEventListener('input', function(e) {
+                const priceFilterValueElement = document.getElementById('priceFilterValue');
+                if (priceFilterValueElement) {
+                    priceFilterValueElement.textContent = 
+                        parseInt(e.target.value).toLocaleString('ru-RU') + ' ₽';
+                }
+            });
+        }
 
         // Генерация отчетов
         function generateFinancialReport() {
@@ -1875,28 +1919,39 @@ DASHBOARD_HTML = """
         
         // Остальные функции (без изменений)
         function updateTime() {
-            const now = new Date();
-            document.getElementById('lastUpdate').textContent = 
-                now.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+            const lastUpdateElement = document.getElementById('lastUpdate');
+            if (lastUpdateElement) {
+                const now = new Date();
+                lastUpdateElement.textContent = 
+                    now.toLocaleTimeString('ru-RU', {hour: '2-digit', minute: '2-digit'});
+            }
         }
 
         async function checkApiStatus() {
             try {
                 const response = await fetch('/health');
                 const data = await response.json();
-                document.getElementById('apiStatus').textContent = 'Online';
-                document.getElementById('apiStatus').className = 'badge bg-success';
+                const apiStatusElement = document.getElementById('apiStatus');
+                if (apiStatusElement) {
+                    apiStatusElement.textContent = 'Online';
+                    apiStatusElement.className = 'badge bg-success';
+                }
             } catch (error) {
-                document.getElementById('apiStatus').textContent = 'Offline';
-                document.getElementById('apiStatus').className = 'badge bg-danger';
+                const apiStatusElement = document.getElementById('apiStatus');
+                if (apiStatusElement) {
+                    apiStatusElement.textContent = 'Offline';
+                    apiStatusElement.className = 'badge bg-danger';
+                }
             }
         }
 
         function loadDashboardData() {
             try {
-                const competitorsRes = fetch('/api/competitors');
                 const avgPrice = 5500;
-                document.getElementById('avgPrice').textContent = avgPrice.toLocaleString('ru-RU') + ' ₽';
+                const avgPriceElement = document.getElementById('avgPrice');
+                if (avgPriceElement) {
+                    avgPriceElement.textContent = avgPrice.toLocaleString('ru-RU') + ' ₽';
+                }
                 createPriceChart();
             } catch (error) {
                 console.error('Ошибка загрузки данных:', error);
@@ -1904,43 +1959,53 @@ DASHBOARD_HTML = """
         }
 
         function createPriceChart() {
-            const ctx = document.getElementById('priceChart').getContext('2d');
-            const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-            const ourPrices = [5000, 5200, 5100, 5300, 5500, 6000, 5800];
-            const marketPrices = [4800, 5000, 4900, 5100, 5300, 5600, 5400];
+            const ctx = document.getElementById('priceChart');
+            if (!ctx) {
+                console.error('Canvas элемент #priceChart не найден');
+                return;
+            }
+            
+            try {
+                const labels = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+                const ourPrices = [5000, 5200, 5100, 5300, 5500, 6000, 5800];
+                const marketPrices = [4800, 5000, 4900, 5100, 5300, 5600, 5400];
 
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Наша цена',
-                            data: ourPrices,
-                            borderColor: '#4361ee',
-                            backgroundColor: 'rgba(67, 97, 238, 0.1)',
-                            borderWidth: 3,
-                            tension: 0.3
-                        },
-                        {
-                            label: 'Средняя по рынку',
-                            data: marketPrices,
-                            borderColor: '#95a5a6',
-                            borderDash: [5, 5],
-                            borderWidth: 2,
-                            tension: 0.3
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    plugins: {
-                        legend: {
-                            position: 'top',
+                new Chart(ctx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Наша цена',
+                                data: ourPrices,
+                                borderColor: '#4361ee',
+                                backgroundColor: 'rgba(67, 97, 238, 0.1)',
+                                borderWidth: 3,
+                                tension: 0.3
+                            },
+                            {
+                                label: 'Средняя по рынку',
+                                data: marketPrices,
+                                borderColor: '#95a5a6',
+                                borderDash: [5, 5],
+                                borderWidth: 2,
+                                tension: 0.3
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            }
                         }
                     }
-                }
-            });
+                });
+            } catch (error) {
+                console.error('Ошибка создания графика:', error);
+            }
         }
 
         async function calculateOptimalPrice() {
@@ -1964,17 +2029,26 @@ DASHBOARD_HTML = """
                 });
 
                 const result = await response.json();
-                document.getElementById('finalPrice').textContent = 
-                    result.final_price.toLocaleString('ru-RU') + ' ₽';
-                document.getElementById('priceResult').style.display = 'block';
+                const finalPriceElement = document.getElementById('finalPrice');
+                if (finalPriceElement) {
+                    finalPriceElement.textContent = 
+                        result.final_price.toLocaleString('ru-RU') + ' ₽';
+                }
+                const priceResultElement = document.getElementById('priceResult');
+                if (priceResultElement) {
+                    priceResultElement.style.display = 'block';
+                }
             } catch (error) {
                 alert('Ошибка расчета: ' + error.message);
             }
         }
 
         function applyPrice() {
-            const price = document.getElementById('finalPrice').textContent;
-            alert('Цена ' + price + ' успешно применена!');
+            const finalPriceElement = document.getElementById('finalPrice');
+            if (finalPriceElement) {
+                const price = finalPriceElement.textContent;
+                alert('Цена ' + price + ' успешно применена!');
+            }
         }
 
         function calculatePrice() {
@@ -1989,26 +2063,15 @@ DASHBOARD_HTML = """
             showTab('reports');
         }
 
-        document.getElementById('occupancySlider').addEventListener('input', function(e) {
-            document.getElementById('occupancyValue').textContent = e.target.value + '%';
-        });
-
-        // Закрытие модальных окон при клике вне их
-        document.getElementById('addressModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeAddressModal();
-            }
-        document.getElementById('hotelInfoModal').addEventListener('click', function(e) {
-            if (e.target === this) closeHotelInfoModal();
-        });
-        
-        // Закрытие модальных окон по Escape
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                closeAddressModal();
-                closeHotelInfoModal();
-            }
-        });
+        const occupancySliderElement = document.getElementById('occupancySlider');
+        if (occupancySliderElement) {
+            occupancySliderElement.addEventListener('input', function(e) {
+                const occupancyValueElement = document.getElementById('occupancyValue');
+                if (occupancyValueElement) {
+                    occupancyValueElement.textContent = e.target.value + '%';
+                }
+            });
+        }
     </script>
 </body>
 </html>
