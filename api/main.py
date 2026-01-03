@@ -692,7 +692,10 @@ DASHBOARD_HTML = """
             </div>
         </div>
     </div>
-
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
@@ -1045,12 +1048,15 @@ DASHBOARD_HTML = """
                     document.getElementById('modalLat').value = data.lat;
                     document.getElementById('modalLng').value = data.lng;
                     
-                    // Показываем модальное окно
-                    new bootstrap.Modal(document.getElementById('addressModal')).show();
+                    // Показываем модальное окно (правильный способ для Bootstrap 5)
+                    const modal = new bootstrap.Modal(document.getElementById('addressModal'));
+                    modal.show();
                 })
                 .catch(error => {
                     console.error('Ошибка загрузки адреса:', error);
-                    new bootstrap.Modal(document.getElementById('addressModal')).show();
+                    // Все равно показываем модальное окно с пустыми полями
+                    const modal = new bootstrap.Modal(document.getElementById('addressModal'));
+                    modal.show();
                 });
         }
         
@@ -1145,16 +1151,45 @@ DASHBOARD_HTML = """
                     updateHotelDisplay(data.hotel);
                     // Обновляем карту
                     updateOurHotelOnMap(data.hotel);
-                    // Закрываем модальное окно
-                    bootstrap.Modal.getInstance(document.getElementById('addressModal')).hide();
+                    
+                    // Закрываем модальное окно (правильный способ для Bootstrap 5)
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addressModal'));
+                    modal.hide();
+                    
                     // Показываем уведомление
-                    alert('Адрес успешно обновлен!');
+                    showNotification('Адрес успешно обновлен!', 'success');
                 }
             })
             .catch(error => {
                 console.error('Ошибка сохранения адреса:', error);
-                alert('Ошибка сохранения адреса');
+                showNotification('Ошибка сохранения адреса', 'error');
             });
+        }
+        
+        // Показать уведомление
+        function showNotification(message, type = 'info') {
+            // Создаем элемент уведомления
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alert.style.top = '20px';
+            alert.style.right = '20px';
+            alert.style.zIndex = '9999';
+            alert.style.minWidth = '300px';
+            
+            alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            // Добавляем на страницу
+            document.body.appendChild(alert);
+            
+            // Автоматически удаляем через 3 секунды
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.parentNode.removeChild(alert);
+                }
+            }, 3000);
         }
         
         // Обновить отображение адреса на странице
