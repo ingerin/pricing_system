@@ -73,6 +73,13 @@ class DeleteCompetitorRequest(BaseModel):
     competitor_id: str
 
 
+class ReportRequest(BaseModel):
+    report_type: str
+    period: Optional[str] = "month"
+    format: Optional[str] = "pdf"
+    hotel_id: str = "our_hotel"
+
+
 # Данные для карты (тестовые координаты)
 COMPETITORS_DATA = {
     "our_hotel": {
@@ -1466,6 +1473,7 @@ DASHBOARD_HTML = """
             checkApiStatus();
             setInterval(updateTime, 60000);
             initRatingStars();
+            loadReportsHistory();
         });
         
             // Добавляем обработчики для модальных окон
@@ -3103,7 +3111,8 @@ DASHBOARD_HTML = """
             modals.forEach(modal => {
                 if (modal.id !== 'addressModal' && 
                     modal.id !== 'hotelInfoModal' && 
-                    modal.id !== 'addCompetitorModal') {
+                    modal.id !== 'addCompetitorModal' &&
+                    modal.id !== 'loadingModal') {
                     modal.remove();
                 }
             });
@@ -3361,18 +3370,562 @@ DASHBOARD_HTML = """
             });
         }
 
-        // Генерация отчетов
-        function generateFinancialReport() {
-            alert('Финансовый отчет генерируется...');
+        // История отчетов
+        let reportsHistory = [];
+        
+        // Инициализация истории отчетов при загрузке
+        async function loadReportsHistory() {
+            try {
+                // Загружаем историю из localStorage или инициализируем пустую
+                const savedHistory = localStorage.getItem('reportsHistory');
+                if (savedHistory) {
+                    reportsHistory = JSON.parse(savedHistory);
+                } else {
+                    // Создаем демо-отчеты
+                    reportsHistory = [
+                        {
+                            id: '1',
+                            type: 'Финансовый',
+                            title: 'Отчет по выручке за июль',
+                            date: '2024-07-15',
+                            size: '2.4 MB',
+                            status: 'Готов',
+                            format: 'PDF'
+                        },
+                        {
+                            id: '2',
+                            type: 'Анализ цен',
+                            title: 'Сравнительный анализ цен конкурентов',
+                            date: '2024-07-10',
+                            size: '1.8 MB',
+                            status: 'Готов',
+                            format: 'PDF'
+                        },
+                        {
+                            id: '3',
+                            type: 'Анализ конкурентов',
+                            title: 'Итоги недели по конкурентам',
+                            date: '2024-07-08',
+                            size: '3.1 MB',
+                            status: 'Готов',
+                            format: 'Excel'
+                        },
+                        {
+                            id: '4',
+                            type: 'Финансовый',
+                            title: 'Отчет по выручке за июнь',
+                            date: '2024-06-30',
+                            size: '2.2 MB',
+                            status: 'Готов',
+                            format: 'PDF'
+                        },
+                        {
+                            id: '5',
+                            type: 'Анализ цен',
+                            title: 'Динамика цен за месяц',
+                            date: '2024-06-25',
+                            size: '1.5 MB',
+                            status: 'Готов',
+                            format: 'PDF'
+                        }
+                    ];
+                    saveReportsHistory();
+                }
+                
+                // Отображаем историю
+                renderReportsHistory();
+                
+            } catch (error) {
+                console.error('Ошибка загрузки истории отчетов:', error);
+                // Инициализируем пустую историю
+                reportsHistory = [];
+                renderReportsHistory();
+            }
+        }
+        
+        // Сохранение истории в localStorage
+        function saveReportsHistory() {
+            try {
+                localStorage.setItem('reportsHistory', JSON.stringify(reportsHistory));
+            } catch (error) {
+                console.error('Ошибка сохранения истории:', error);
+            }
+        }
+        
+        // Отображение истории отчетов
+        function renderReportsHistory() {
+            const reportsHistoryElement = document.getElementById('reportsHistory');
+            if (!reportsHistoryElement) return;
+            
+            if (reportsHistory.length === 0) {
+                reportsHistoryElement.innerHTML = `
+                    <div class="text-center py-4">
+                        <i class="bi bi-file-text fs-1 text-muted"></i>
+                        <p class="mt-2">История отчетов пуста</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Сортируем по дате (новые сверху)
+            const sortedHistory = [...reportsHistory].sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            reportsHistoryElement.innerHTML = sortedHistory.map(report => `
+                <div class="card mb-2">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="badge ${getReportTypeColor(report.type)} me-2">
+                                        ${report.type}
+                                    </span>
+                                    <small class="text-muted">
+                                        <i class="bi bi-calendar"></i> ${formatDate(report.date)}
+                                    </small>
+                                </div>
+                                <h6 class="card-title mb-1">${report.title}</h6>
+                                <div class="d-flex align-items-center gap-3">
+                                    <small class="text-muted">
+                                        <i class="bi bi-file-earmark"></i> ${report.format}
+                                    </small>
+                                    <small class="text-muted">
+                                        <i class="bi bi-hdd"></i> ${report.size}
+                                    </small>
+                                    <span class="badge ${getStatusColor(report.status)}">
+                                        ${report.status}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-column gap-1">
+                                <button class="btn btn-sm btn-outline-primary" onclick="downloadReport('${report.id}')">
+                                    <i class="bi bi-download"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="viewReport('${report.id}')">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteReport('${report.id}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Вспомогательные функции для отчетов
+        function getReportTypeColor(type) {
+            const colors = {
+                'Финансовый': 'bg-primary',
+                'Анализ цен': 'bg-success',
+                'Анализ конкурентов': 'bg-warning text-dark',
+                'Общий': 'bg-info'
+            };
+            return colors[type] || 'bg-secondary';
+        }
+        
+        function getStatusColor(status) {
+            const colors = {
+                'Готов': 'bg-success',
+                'В процессе': 'bg-warning text-dark',
+                'Ошибка': 'bg-danger',
+                'Ожидание': 'bg-secondary'
+            };
+            return colors[status] || 'bg-secondary';
+        }
+        
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+            });
+        }
+        
+        // Функции для работы с отчетами
+        async function generateFinancialReport() {
+            showReportLoading('Финансовый отчет');
+            
+            try {
+                // Имитируем генерацию отчета
+                await simulateReportGeneration();
+                
+                // Создаем новый отчет
+                const newReport = {
+                    id: generateReportId(),
+                    type: 'Финансовый',
+                    title: `Финансовый отчет ${getCurrentMonth()} ${new Date().getFullYear()}`,
+                    date: new Date().toISOString().split('T')[0],
+                    size: getRandomSize(2, 4) + ' MB',
+                    status: 'Готов',
+                    format: 'PDF'
+                };
+                
+                // Добавляем в историю
+                addReportToHistory(newReport);
+                
+                showReportSuccess('Финансовый отчет успешно создан!');
+                
+            } catch (error) {
+                showReportError('Ошибка при создании финансового отчета');
+                console.error('Ошибка генерации финансового отчета:', error);
+            }
+        }
+        
+        async function generatePricingReport() {
+            showReportLoading('Анализ цен');
+            
+            try {
+                // Имитируем генерацию отчета
+                await simulateReportGeneration();
+                
+                // Создаем новый отчет
+                const newReport = {
+                    id: generateReportId(),
+                    type: 'Анализ цен',
+                    title: `Анализ цен конкурентов за ${getCurrentWeek()}`,
+                    date: new Date().toISOString().split('T')[0],
+                    size: getRandomSize(1, 3) + ' MB',
+                    status: 'Готов',
+                    format: 'PDF'
+                };
+                
+                // Добавляем в историю
+                addReportToHistory(newReport);
+                
+                showReportSuccess('Отчет по ценам успешно создан!');
+                
+            } catch (error) {
+                showReportError('Ошибка при создании отчета по ценам');
+                console.error('Ошибка генерации отчета по ценам:', error);
+            }
+        }
+        
+        async function generateCompetitorReport() {
+            showReportLoading('Анализ конкурентов');
+            
+            try {
+                // Имитируем генерацию отчета
+                await simulateReportGeneration();
+                
+                // Создаем новый отчет
+                const newReport = {
+                    id: generateReportId(),
+                    type: 'Анализ конкурентов',
+                    title: `Анализ конкурентов ${getCurrentMonth()}`,
+                    date: new Date().toISOString().split('T')[0],
+                    size: getRandomSize(2, 5) + ' MB',
+                    status: 'Готов',
+                    format: 'Excel'
+                };
+                
+                // Добавляем в историю
+                addReportToHistory(newReport);
+                
+                showReportSuccess('Отчет по конкурентам успешно создан!');
+                
+            } catch (error) {
+                showReportError('Ошибка при создании отчета по конкурентам');
+                console.error('Ошибка генерации отчета по конкурентам:', error);
+            }
+        }
+        
+        // Вспомогательные функции для генерации отчетов
+        function showReportLoading(reportType) {
+            const loadingModal = document.getElementById('loadingModal');
+            if (!loadingModal) {
+                // Создаем модальное окно загрузки если его нет
+                const modalHtml = `
+                    <div id="loadingModal" class="modal-overlay" style="display: flex;">
+                        <div class="modal-content text-center" style="max-width: 400px;">
+                            <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;"></div>
+                            <h5 class="mt-3">Создание отчета...</h5>
+                            <p id="loadingReportType">${reportType}</p>
+                            <div class="progress mt-3" style="height: 10px;">
+                                <div id="loadingProgress" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                     role="progressbar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                const modalContainer = document.createElement('div');
+                modalContainer.innerHTML = modalHtml;
+                document.body.appendChild(modalContainer);
+            } else {
+                loadingModal.style.display = 'flex';
+                document.getElementById('loadingReportType').textContent = reportType;
+                document.getElementById('loadingProgress').style.width = '0%';
+            }
+            
+            // Анимация прогресса
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress > 90) progress = 90;
+                document.getElementById('loadingProgress').style.width = progress + '%';
+            }, 200);
+            
+            window.reportProgressInterval = progressInterval;
+        }
+        
+        function showReportSuccess(message) {
+            clearInterval(window.reportProgressInterval);
+            
+            const loadingModal = document.getElementById('loadingModal');
+            if (loadingModal) {
+                document.getElementById('loadingProgress').style.width = '100%';
+                
+                setTimeout(() => {
+                    loadingModal.style.display = 'none';
+                    
+                    // Показываем сообщение об успехе
+                    const successAlert = `
+                        <div id="reportSuccessAlert" class="alert alert-success alert-dismissible fade show" 
+                             style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                            <i class="bi bi-check-circle"></i> ${message}
+                            <button type="button" class="btn-close" onclick="document.getElementById('reportSuccessAlert').remove()"></button>
+                        </div>
+                    `;
+                    
+                    const alertContainer = document.createElement('div');
+                    alertContainer.innerHTML = successAlert;
+                    document.body.appendChild(alertContainer);
+                    
+                    // Автоматически скрываем через 5 секунд
+                    setTimeout(() => {
+                        const alertElement = document.getElementById('reportSuccessAlert');
+                        if (alertElement) {
+                            alertElement.remove();
+                        }
+                    }, 5000);
+                    
+                }, 500);
+            }
         }
 
-        function generatePricingReport() {
-            alert('Отчет по ценам генерируется...');
+        function showReportError(message) {
+            clearInterval(window.reportProgressInterval);
+            
+            const loadingModal = document.getElementById('loadingModal');
+            if (loadingModal) {
+                loadingModal.style.display = 'none';
+                
+                // Показываем сообщение об ошибке
+                const errorAlert = `
+                    <div id="reportErrorAlert" class="alert alert-danger alert-dismissible fade show" 
+                         style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                        <i class="bi bi-exclamation-triangle"></i> ${message}
+                        <button type="button" class="btn-close" onclick="document.getElementById('reportErrorAlert').remove()"></button>
+                    </div>
+                `;
+                
+                const alertContainer = document.createElement('div');
+                alertContainer.innerHTML = errorAlert;
+                document.body.appendChild(alertContainer);
+                
+                // Автоматически скрываем через 5 секунд
+                setTimeout(() => {
+                    const alertElement = document.getElementById('reportErrorAlert');
+                    if (alertElement) {
+                        alertElement.remove();
+                    }
+                }, 5000);
+            }
         }
 
-        function generateCompetitorReport() {
-            alert('Отчет по конкурентам генерируется...');
+        async function simulateReportGeneration() {
+            // Имитация задержки генерации отчета
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    resolve();
+                }, 1500 + Math.random() * 1000);
+            });
         }
+        
+        function generateReportId() {
+            return 'report_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        function getCurrentMonth() {
+            const months = [
+                'январь', 'февраль', 'март', 'апрель', 'май', 'июнь',
+                'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь'
+            ];
+            return months[new Date().getMonth()];
+        }
+        
+        function getCurrentWeek() {
+            const today = new Date();
+            const firstDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 1));
+            const lastDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 7));
+            
+            const formatDate = (date) => {
+                return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+            };
+            
+            return `${formatDate(firstDayOfWeek)} - ${formatDate(lastDayOfWeek)}`;
+        }
+        
+        function getRandomSize(min, max) {
+            return (min + Math.random() * (max - min)).toFixed(1);
+        }
+        
+        function addReportToHistory(report) {
+            // Добавляем отчет в начало истории
+            reportsHistory.unshift(report);
+            
+            // Сохраняем в localStorage
+            saveReportsHistory();
+            
+            // Обновляем отображение
+            renderReportsHistory();
+        }
+        
+        // Функции для управления отчетами
+        function downloadReport(reportId) {
+            const report = reportsHistory.find(r => r.id === reportId);
+            if (!report) return;
+            
+            showReportLoading(`Скачивание: ${report.title}`);
+            
+            setTimeout(() => {
+                showReportSuccess(`Отчет "${report.title}" скачан`);
+                
+                // Имитация скачивания
+                const link = document.createElement('a');
+                link.href = '#'; // В реальном приложении здесь будет ссылка на файл
+                link.download = `${report.title}.${report.format.toLowerCase()}`;
+                link.click();
+            }, 1000);
+        }
+        
+        function viewReport(reportId) {
+            const report = reportsHistory.find(r => r.id === reportId);
+            if (!report) return;
+            
+            // Показываем модальное окно с предпросмотром отчета
+            const previewModal = `
+                <div id="reportPreviewModal" class="modal-overlay" style="display: flex;">
+                    <div class="modal-content" style="max-width: 800px; max-height: 90vh;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4>
+                                <i class="bi bi-file-text"></i> ${report.title}
+                            </h4>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="closeReportPreview()">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="row mb-4">
+                                    <div class="col-md-3">
+                                        <div class="text-center">
+                                            <i class="bi bi-file-earmark-pdf fs-1 text-danger" style="font-size: 4rem !important;"></i>
+                                            <p class="mt-2">${report.format} документ</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-9">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <p class="mb-1"><strong>Тип:</strong></p>
+                                                <p class="mb-1"><strong>Дата создания:</strong></p>
+                                                <p class="mb-1"><strong>Размер:</strong></p>
+                                                <p class="mb-1"><strong>Статус:</strong></p>
+                                            </div>
+                                            <div class="col-6">
+                                                <p class="mb-1">${report.type}</p>
+                                                <p class="mb-1">${formatDate(report.date)}</p>
+                                                <p class="mb-1">${report.size}</p>
+                                                <p class="mb-1">
+                                                    <span class="badge ${getStatusColor(report.status)}">
+                                                        ${report.status}
+                                                    </span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i>
+                                    Это предпросмотр отчета. Для полного просмотра скачайте файл.
+                                </div>
+                                
+                                <div class="mt-4 text-center">
+                                    <button class="btn btn-primary me-2" onclick="downloadReport('${reportId}')">
+                                        <i class="bi bi-download"></i> Скачать полную версию
+                                    </button>
+                                    <button class="btn btn-outline-secondary" onclick="closeReportPreview()">
+                                        <i class="bi bi-x"></i> Закрыть
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            closeAllModals();
+            
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = previewModal;
+            document.body.appendChild(modalContainer);
+            
+            const modalElement = document.getElementById('reportPreviewModal');
+            if (modalElement) {
+                modalElement.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeReportPreview();
+                    }
+                });
+            }
+        }
+        
+        function closeReportPreview() {
+            const modal = document.getElementById('reportPreviewModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function deleteReport(reportId) {
+            if (!confirm('Вы уверены, что хотите удалить этот отчет?')) {
+                return;
+            }
+            
+            // Удаляем отчет из истории
+            reportsHistory = reportsHistory.filter(r => r.id !== reportId);
+            
+            // Сохраняем изменения
+            saveReportsHistory();
+            
+            // Обновляем отображение
+            renderReportsHistory();
+            
+            // Показываем сообщение об успешном удалении
+            const successAlert = `
+                <div id="deleteSuccessAlert" class="alert alert-success alert-dismissible fade show" 
+                     style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+                    <i class="bi bi-check-circle"></i> Отчет успешно удален
+                    <button type="button" class="btn-close" onclick="document.getElementById('deleteSuccessAlert').remove()"></button>
+                </div>
+            `;
+            
+            const alertContainer = document.createElement('div');
+            alertContainer.innerHTML = successAlert;
+            document.body.appendChild(alertContainer);
+            
+            setTimeout(() => {
+                const alertElement = document.getElementById('deleteSuccessAlert');
+                if (alertElement) {
+                    alertElement.remove();
+                }
+            }, 3000);
+        }
+
 
         // Остальные функции
         function updateTime() {
@@ -4695,6 +5248,136 @@ async def analyze_selected_competitors(request: Dict[str, Any]):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/reports/generate")
+async def generate_report(request: ReportRequest):
+    """Генерация отчета"""
+    try:
+        # Валидация типа отчета
+        valid_types = ["financial", "pricing", "competitors", "summary"]
+        if request.report_type not in valid_types:
+            raise HTTPException(status_code=400, detail=f"Неверный тип отчета. Допустимые: {valid_types}")
+
+        # Получаем данные для отчета
+        report_data = await prepare_report_data(request)
+
+        # Генерируем отчет
+        report_id = f"report_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{request.report_type}"
+
+        # Возвращаем информацию об отчете
+        return {
+            "success": True,
+            "report_id": report_id,
+            "report_type": request.report_type,
+            "period": request.period,
+            "format": request.format,
+            "size_kb": len(str(report_data)) // 1024,
+            "download_url": f"/api/reports/download/{report_id}",
+            "preview_url": f"/api/reports/preview/{report_id}",
+            "generated_at": datetime.now().isoformat(),
+            "hotel_id": request.hotel_id
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def prepare_report_data(request: ReportRequest):
+    """Подготовка данных для отчета"""
+    # Для финансового отчета
+    if request.report_type == "financial":
+        return {
+            "hotel": COMPETITORS_DATA["our_hotel"],
+            "revenue_data": {
+                "current_month": 1250000,
+                "previous_month": 1180000,
+                "growth_percent": 5.93,
+                "average_daily_rate": 5500,
+                "occupancy_rate": 78
+            },
+            "expenses": {
+                "staff": 450000,
+                "utilities": 120000,
+                "marketing": 80000,
+                "maintenance": 60000,
+                "other": 40000
+            },
+            "summary": {
+                "net_profit": 500000,
+                "profit_margin": 40,
+                "recommendations": [
+                    "Увеличить маркетинговый бюджет на 10%",
+                    "Рассмотреть автоматизацию процессов для снижения затрат",
+                    "Провести акцию для повышения загрузки в будни"
+                ]
+            }
+        }
+
+    # Для анализа цен
+    elif request.report_type == "pricing":
+        competitors = COMPETITORS_DATA["competitors"]
+        avg_competitor_price = sum(c["price"] for c in competitors) / len(competitors)
+
+        return {
+            "our_hotel": COMPETITORS_DATA["our_hotel"],
+            "competitors": competitors,
+            "pricing_analysis": {
+                "average_competitor_price": avg_competitor_price,
+                "price_difference": COMPETITORS_DATA["our_hotel"]["price"] - avg_competitor_price,
+                "market_position": "Средняя цена рынка",
+                "recommendations": get_pricing_recommendations(COMPETITORS_DATA["our_hotel"]["price"],
+                                                               avg_competitor_price)
+            },
+            "price_trend": [
+                {"day": "Пн", "our_price": 5000, "market_avg": 4800},
+                {"day": "Вт", "our_price": 5200, "market_avg": 5000},
+                {"day": "Ср", "our_price": 5100, "market_avg": 4900},
+                {"day": "Чт", "our_price": 5300, "market_avg": 5100},
+                {"day": "Пт", "our_price": 5500, "market_avg": 5300},
+                {"day": "Сб", "our_price": 6000, "market_avg": 5600},
+                {"day": "Вс", "our_price": 5800, "market_avg": 5400}
+            ]
+        }
+
+    # Для анализа конкурентов
+    elif request.report_type == "competitors":
+        return {
+            "competitors_count": len(COMPETITORS_DATA["competitors"]),
+            "competitors": COMPETITORS_DATA["competitors"],
+            "analysis": {
+                "price_range": {
+                    "min": min(c["price"] for c in COMPETITORS_DATA["competitors"]),
+                    "max": max(c["price"] for c in COMPETITORS_DATA["competitors"]),
+                    "average": sum(c["price"] for c in COMPETITORS_DATA["competitors"]) / len(
+                        COMPETITORS_DATA["competitors"])
+                },
+                "rating_range": {
+                    "min": min(c["rating"] for c in COMPETITORS_DATA["competitors"]),
+                    "max": max(c["rating"] for c in COMPETITORS_DATA["competitors"]),
+                    "average": sum(c["rating"] for c in COMPETITORS_DATA["competitors"]) / len(
+                        COMPETITORS_DATA["competitors"])
+                },
+                "top_competitors": sorted(COMPETITORS_DATA["competitors"], key=lambda x: x["rating"], reverse=True)[:3]
+            },
+            "recommendations": [
+                "Мониторить цены конкурентов ежедневно",
+                "Анализировать отзывы конкурентов с высоким рейтингом",
+                "Предложить уникальные услуги для выделения на фоне конкурентов"
+            ]
+        }
+
+
+def get_pricing_recommendations(our_price, avg_competitor_price):
+    """Получение рекомендаций по ценообразованию"""
+    price_diff = our_price - avg_competitor_price
+
+    if price_diff > 500:
+        return ["Рассмотреть снижение цены на 5-10%", "Предложить пакетные услуги для обоснования цены"]
+    elif price_diff < -500:
+        return ["Рассмотреть повышение цены на 5-8%", "Акцентировать внимание на качестве сервиса в маркетинге"]
+    else:
+        return ["Поддерживать текущий уровень цен", "Продолжать мониторинг конкурентов"]
 
 
 if __name__ == "__main__":
