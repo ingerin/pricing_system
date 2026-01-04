@@ -3040,10 +3040,6 @@ DASHBOARD_HTML = """
                     basePriceInput.value = window.analysisData.avgPrice;
                 }
                 
-                // Опционально: автоматически запускаем расчет
-                setTimeout(() => {
-                    calculateOptimalPrice();
-                }, 100);
             }, 300);
         }
         
