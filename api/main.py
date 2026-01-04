@@ -2854,7 +2854,7 @@ DASHBOARD_HTML = """
         function showAnalysisResults(data) {
             const modalHtml = `
                 <div id="analysisResultsModal" class="modal-overlay" style="display: flex;">
-                    <div class="modal-content" style="max-width: 900px;">
+                    <div class="modal-content" style="max-width: 800px;">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h4><i class="bi bi-graph-up-arrow"></i> Результаты анализа</h4>
                             <button class="btn btn-sm btn-outline-secondary" onclick="closeAnalysisResultsModal()">
@@ -2993,7 +2993,8 @@ DASHBOARD_HTML = """
                         </div>
         
                         <div class="mt-4">
-                            <button class="btn btn-primary w-100" onclick="showTab('pricing')">
+                            <!-- ИЗМЕНЯЕМ ЭТУ КНОПКУ: добавляем вызов функции closeAnalysisResultsModal() -->
+                            <button class="btn btn-primary w-100" onclick="closeAnalysisResultsModalAndGoToPricing()">
                                 <i class="bi bi-calculator"></i> Перейти к расчету цены
                             </button>
                         </div>
@@ -3009,6 +3010,9 @@ DASHBOARD_HTML = """
             modalContainer.innerHTML = modalHtml;
             document.body.appendChild(modalContainer);
         
+            // Сохраняем данные анализа для использования после закрытия
+            window.analysisData = data;
+        
             // Добавляем обработчик закрытия
             const modalElement = document.getElementById('analysisResultsModal');
             if (modalElement) {
@@ -3018,6 +3022,124 @@ DASHBOARD_HTML = """
                     }
                 });
             }
+        }
+        
+        // Добавляем эту функцию для автоматического заполнения данных
+        function autoFillPricingFromAnalysis(analysisData) {
+            if (!analysisData) return;
+            
+            // Заполняем базовую цену средней ценой конкурентов
+            const basePriceInput = document.getElementById('basePrice');
+            if (basePriceInput) {
+                basePriceInput.value = analysisData.avgPrice;
+            }
+            
+            // Настраиваем заполняемость в зависимости от разницы рейтингов
+            const occupancySlider = document.getElementById('occupancySlider');
+            const occupancyValue = document.getElementById('occupancyValue');
+            
+            if (occupancySlider && occupancyValue) {
+                // Рассчитываем заполняемость: если наш рейтинг выше, то заполняемость выше
+                let occupancy = 78; // базовое значение
+                if (analysisData.ratingDiff > 0.3) {
+                    occupancy = 85; // высокий рейтинг → высокая заполняемость
+                } else if (analysisData.ratingDiff < -0.3) {
+                    occupancy = 65; // низкий рейтинг → низкая заполняемость
+                }
+                
+                occupancySlider.value = occupancy;
+                occupancyValue.textContent = occupancy + '%';
+            }
+            
+            // Настраиваем сезон в зависимости от разницы цен
+            const seasonSelect = document.getElementById('season');
+            if (seasonSelect) {
+                if (analysisData.priceDiff > 500) {
+                    // Мы дороже → низкий сезон (снижаем коэффициент)
+                    seasonSelect.value = '0.8';
+                } else if (analysisData.priceDiff < -500) {
+                    // Мы дешевле → пиковый сезон (повышаем коэффициент)
+                    seasonSelect.value = '1.6';
+                }
+                // Для небольших разниц оставляем средний сезон
+            }
+            
+            // Добавляем информационное сообщение
+            const pricingTab = document.getElementById('pricingTab');
+            if (pricingTab) {
+                // Удаляем старое сообщение если есть
+                const oldAlert = pricingTab.querySelector('.analysis-info-alert');
+                if (oldAlert) oldAlert.remove();
+                
+                const alertHtml = `
+                    <div class="alert alert-info analysis-info-alert mt-3">
+                        <i class="bi bi-info-circle"></i> 
+                        <strong>Автозаполнение из анализа:</strong> 
+                        Средняя цена конкурентов: ${analysisData.avgPrice.toLocaleString('ru-RU')} ₽ 
+                        | Разница: ${analysisData.priceDiff > 0 ? '+' : ''}${analysisData.priceDiff} ₽
+                    </div>
+                `;
+                
+                const cardBody = pricingTab.querySelector('.card-body');
+                if (cardBody) {
+                    const priceResult = document.getElementById('priceResult');
+                    if (priceResult) {
+                        cardBody.insertBefore(createElementFromHTML(alertHtml), priceResult);
+                    } else {
+                        const calcButton = cardBody.querySelector('.btn-lg');
+                        if (calcButton) {
+                            calcButton.insertAdjacentHTML('afterend', alertHtml);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Обновляем функцию перехода к ценообразованию
+        function closeAnalysisResultsModalAndGoToPricing() {
+            // Сохраняем данные анализа
+            const analysisData = window.analysisData;
+            
+            // Закрываем модальное окно
+            closeAnalysisResultsModal();
+            
+            // Переходим на вкладку ценообразования
+            showTab('pricing');
+            
+            // Автоматически заполняем поля данными из анализа
+            setTimeout(() => {
+                if (analysisData) {
+                    autoFillPricingFromAnalysis(analysisData);
+                }
+                
+                // Автоматически запускаем расчет через 500мс
+                setTimeout(() => {
+                    calculateOptimalPrice();
+                    
+                    // Прокручиваем к результату
+                    const priceResult = document.getElementById('priceResult');
+                    if (priceResult) {
+                        priceResult.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 500);
+            }, 300);
+        }
+        
+        // Вспомогательная функция для создания элемента из HTML
+        function createElementFromHTML(htmlString) {
+            const div = document.createElement('div');
+            div.innerHTML = htmlString.trim();
+            return div.firstChild;
+        }
+        
+        // Существующая функция остается без изменений
+        function closeAnalysisResultsModal() {
+            const modal = document.getElementById('analysisResultsModal');
+            if (modal) {
+                modal.remove();
+            }
+            // Очищаем данные анализа
+            window.analysisData = null;
         }
         
         // Вспомогательные функции для анализа
@@ -3063,13 +3185,6 @@ DASHBOARD_HTML = """
             return actions.map(action => `<li>${action}</li>`).join('');
         }
         
-        // Функция закрытия модального окна результатов
-        function closeAnalysisResultsModal() {
-            const modal = document.getElementById('analysisResultsModal');
-            if (modal) {
-                modal.remove();
-            }
-        }
         
         // Функция для закрытия всех модальных окон
         function closeAllModals() {
