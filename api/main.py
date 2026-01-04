@@ -3740,8 +3740,8 @@ DASHBOARD_HTML = """
         
         function getCurrentWeek() {
             const today = new Date();
-            const firstDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay() - 7));
-            const lastDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay()));
+            const firstDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay() - 6));
+            const lastDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 7));
             
             const formatDate = (date) => {
                 return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
