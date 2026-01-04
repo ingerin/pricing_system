@@ -3386,8 +3386,8 @@ DASHBOARD_HTML = """
                         {
                             id: '1',
                             type: 'Финансовый',
-                            title: 'Отчет по выручке за июль',
-                            date: '2024-07-15',
+                            title: 'Отчет по выручке за июль 2025',
+                            date: '2025-01-15',
                             size: '2.4 MB',
                             status: 'Готов',
                             format: 'PDF'
@@ -3395,8 +3395,8 @@ DASHBOARD_HTML = """
                         {
                             id: '2',
                             type: 'Анализ цен',
-                            title: 'Сравнительный анализ цен конкурентов',
-                            date: '2024-07-10',
+                            title: 'Анализ цен конкурентов за 05.12 - 11.12',
+                            date: '2025-12-11',
                             size: '1.8 MB',
                             status: 'Готов',
                             format: 'PDF'
@@ -3404,29 +3404,11 @@ DASHBOARD_HTML = """
                         {
                             id: '3',
                             type: 'Анализ конкурентов',
-                            title: 'Итоги недели по конкурентам',
-                            date: '2024-07-08',
+                            title: 'Анализ конкурентов за январь 2025',
+                            date: '2025-01-25',
                             size: '3.1 MB',
                             status: 'Готов',
                             format: 'Excel'
-                        },
-                        {
-                            id: '4',
-                            type: 'Финансовый',
-                            title: 'Отчет по выручке за июнь',
-                            date: '2024-06-30',
-                            size: '2.2 MB',
-                            status: 'Готов',
-                            format: 'PDF'
-                        },
-                        {
-                            id: '5',
-                            type: 'Анализ цен',
-                            title: 'Динамика цен за месяц',
-                            date: '2024-06-25',
-                            size: '1.5 MB',
-                            status: 'Готов',
-                            format: 'PDF'
                         }
                     ];
                     saveReportsHistory();
@@ -3555,7 +3537,7 @@ DASHBOARD_HTML = """
                 const newReport = {
                     id: generateReportId(),
                     type: 'Финансовый',
-                    title: `Финансовый отчет ${getCurrentMonth()} ${new Date().getFullYear()}`,
+                    title: `Финансовый отчет за ${getCurrentMonth()} ${new Date().getFullYear()}`,
                     date: new Date().toISOString().split('T')[0],
                     size: getRandomSize(2, 4) + ' MB',
                     status: 'Готов',
@@ -3613,7 +3595,7 @@ DASHBOARD_HTML = """
                 const newReport = {
                     id: generateReportId(),
                     type: 'Анализ конкурентов',
-                    title: `Анализ конкурентов ${getCurrentMonth()}`,
+                    title: `Анализ конкурентов за ${getCurrentMonth()} ${new Date().getFullYear()}`,
                     date: new Date().toISOString().split('T')[0],
                     size: getRandomSize(2, 5) + ' MB',
                     status: 'Готов',
@@ -3758,8 +3740,8 @@ DASHBOARD_HTML = """
         
         function getCurrentWeek() {
             const today = new Date();
-            const firstDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 1));
-            const lastDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay() + 7));
+            const firstDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay() - 7));
+            const lastDayOfWeek = new Date(today.setDate(today.getDate() - today.getDay()));
             
             const formatDate = (date) => {
                 return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
