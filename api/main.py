@@ -1106,7 +1106,7 @@ DASHBOARD_HTML = """
                     <div class="col-md-3">
                         <div class="metric-card">
                             <i class="bi bi-cash-stack fs-1"></i>
-                            <div class="metric-value" id="monthRevenue">12.5M ₽</div>
+                            <div class="metric-value" id="monthRevenue">12.5K ₽</div>
                             <small>Выручка (мес.)</small>
                         </div>
                     </div>
