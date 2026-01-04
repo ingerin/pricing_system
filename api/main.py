@@ -2745,24 +2745,354 @@ DASHBOARD_HTML = """
             });
         }
 
-        // Анализировать выбранные
-        function analyzeSelected() {
+        // Анализировать выбранные отели (обновленная функция)
+        async function analyzeSelected() {
             if (selectedHotels.size === 0) return;
 
-            alert(`Анализ ${selectedHotels.size} выбранных отелей...\n\nРезультаты анализа:\n• Средняя цена: 5,450 ₽\n• Рекомендуемая цена: 5,500 ₽\n• Ваша позиция: оптимальная`);
-
-            // Показываем во вкладке ценообразования
-            showTab('competitors');
+            try {
+                // Показываем индикатор загрузки
+                const analyzeBtn = document.getElementById('analyzeBtn');
+                const originalText = analyzeBtn.innerHTML;
+                analyzeBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Анализ...';
+                analyzeBtn.disabled = true;
+        
+                // Собираем данные о выбранных отелях
+                const selectedData = [];
+                let totalPrice = 0;
+                let totalRating = 0;
+                let selectedCount = 0;
+        
+                selectedHotels.forEach(hotelId => {
+                    const hotel = allCompetitorsData.find(h => h.id === hotelId);
+                    if (hotel) {
+                        selectedData.push(hotel);
+                        totalPrice += hotel.price;
+                        totalRating += hotel.rating;
+                        selectedCount++;
+                    }
+                });
+        
+                // Если отели найдены, анализируем
+                if (selectedCount > 0) {
+                    const avgPrice = Math.round(totalPrice / selectedCount);
+                    const avgRating = (totalRating / selectedCount).toFixed(1);
+                    
+                    // Сравниваем с нашим отелем
+                    if (!ourHotelData) {
+                        await loadCurrentHotelInfo();
+                    }
+        
+                    const ourPrice = ourHotelData.price;
+                    const ourRating = ourHotelData.rating;
+                    const priceDiff = ourPrice - avgPrice;
+                    const ratingDiff = ourRating - avgRating;
+        
+                    // Определяем рекомендацию
+                    let recommendation = '';
+                    let recommendationType = 'info';
+        
+                    if (priceDiff > 500) {
+                        if (ratingDiff > 0.3) {
+                            recommendation = 'Ваш отель значительно дороже, но имеет более высокий рейтинг. Рассмотрите пакетные предложения или дополнительные услуги для обоснования цены.';
+                        } else {
+                            recommendation = 'Ваш отель значительно дороже конкурентов. Рекомендуется снизить цену на 5-15% или улучшить сервис.';
+                            recommendationType = 'danger';
+                        }
+                    } else if (priceDiff < -500) {
+                        if (ratingDiff > 0) {
+                            recommendation = 'Ваш отель дешевле конкурентов, но имеет более высокий рейтинг. Вы можете повысить цену на 5-10% без потери клиентов.';
+                            recommendationType = 'success';
+                        } else {
+                            recommendation = 'Ваш отель дешевле конкурентов. Вы можете постепенно повышать цену, добавив дополнительные услуги.';
+                        }
+                    } else {
+                        if (ratingDiff > 0.3) {
+                            recommendation = 'Цены сопоставимы, но ваш рейтинг выше. Используйте это в маркетинге и рассмотрите повышение цены на 3-5%.';
+                            recommendationType = 'success';
+                        } else if (ratingDiff < -0.3) {
+                            recommendation = 'Цены сопоставимы, но рейтинг конкурентов выше. Проанализируйте отзывы гостей и улучшите сервис.';
+                            recommendationType = 'warning';
+                        } else {
+                            recommendation = 'Ваша ценовая позиция оптимальна. Поддерживайте текущую стратегию.';
+                        }
+                    }
+        
+                    // Показываем результаты анализа
+                    showAnalysisResults({
+                        selectedCount: selectedCount,
+                        avgPrice: avgPrice,
+                        avgRating: avgRating,
+                        ourPrice: ourPrice,
+                        ourRating: ourRating,
+                        priceDiff: priceDiff,
+                        ratingDiff: ratingDiff,
+                        recommendation: recommendation,
+                        recommendationType: recommendationType,
+                        selectedHotels: selectedData
+                    });
+        
+                } else {
+                    alert('Не удалось найти данные выбранных отелей');
+                }
+        
+                // Восстанавливаем кнопку
+                analyzeBtn.innerHTML = originalText;
+                analyzeBtn.disabled = false;
+        
+            } catch (error) {
+                console.error('Ошибка анализа:', error);
+                alert('Произошла ошибка при анализе выбранных отелей');
+                
+                // Восстанавливаем кнопку
+                const analyzeBtn = document.getElementById('analyzeBtn');
+                analyzeBtn.innerHTML = '<i class="bi bi-graph-up"></i> Анализировать выбранные';
+                analyzeBtn.disabled = false;
+            }
         }
-
-        // Очистить выбор
+        
+        // Функция для отображения результатов анализа
+        function showAnalysisResults(data) {
+            const modalHtml = `
+                <div id="analysisResultsModal" class="modal-overlay" style="display: flex;">
+                    <div class="modal-content" style="max-width: 800px;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h4><i class="bi bi-graph-up-arrow"></i> Результаты анализа</h4>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="closeAnalysisResultsModal()">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
+        
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Анализируемых отелей</h6>
+                                        <div class="metric-value">${data.selectedCount}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Средняя цена</h6>
+                                        <div class="metric-value">${data.avgPrice.toLocaleString('ru-RU')} ₽</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Средний рейтинг</h6>
+                                        <div class="metric-value">${data.avgRating}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card text-center">
+                                    <div class="card-body">
+                                        <h6 class="card-title">Разница в цене</h6>
+                                        <div class="metric-value ${data.priceDiff > 0 ? 'text-success' : data.priceDiff < 0 ? 'text-danger' : 'text-warning'}">
+                                            ${data.priceDiff > 0 ? '+' : ''}${data.priceDiff} ₽
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Наш отель</h5>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Цена:</span>
+                                            <strong>${data.ourPrice.toLocaleString('ru-RU')} ₽</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Рейтинг:</span>
+                                            <strong>${data.ourRating} ★</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Конкуренты (среднее)</h5>
+                                        <div class="d-flex justify-content-between mb-2">
+                                            <span>Цена:</span>
+                                            <strong>${data.avgPrice.toLocaleString('ru-RU')} ₽</strong>
+                                        </div>
+                                        <div class="d-flex justify-content-between">
+                                            <span>Рейтинг:</span>
+                                            <strong>${data.avgRating} ★</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+        
+                        <div class="card mt-4">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i class="bi bi-lightbulb"></i> Рекомендация
+                                    <span class="badge bg-${data.recommendationType} float-end">
+                                        ${getRecommendationLevel(data.priceDiff, data.ratingDiff)}
+                                    </span>
+                                </h5>
+                                <p>${data.recommendation}</p>
+                                
+                                <div class="mt-3">
+                                    <h6>Конкретные действия:</h6>
+                                    <ul>
+                                        ${getActionItems(data.priceDiff, data.ratingDiff)}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+        
+                        <div class="card mt-4">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="bi bi-list-ol"></i> Проанализированные отели</h5>
+                                <div class="table-responsive">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Отель</th>
+                                                <th>Цена</th>
+                                                <th>Рейтинг</th>
+                                                <th>Расстояние</th>
+                                                <th>Разница с нами</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${data.selectedHotels.map(hotel => {
+                                                const priceDiff = hotel.price - data.ourPrice;
+                                                const ratingDiff = hotel.rating - data.ourRating;
+                                                return `
+                                                    <tr>
+                                                        <td>${hotel.name}</td>
+                                                        <td>${hotel.price.toLocaleString('ru-RU')} ₽</td>
+                                                        <td>${hotel.rating} ★</td>
+                                                        <td>${hotel.distance}</td>
+                                                        <td>
+                                                            <span class="badge ${priceDiff > 500 ? 'bg-danger' : priceDiff < -500 ? 'bg-success' : 'bg-warning'}">
+                                                                ${priceDiff > 0 ? '+' : ''}${priceDiff} ₽
+                                                            </span>
+                                                            <span class="badge ${ratingDiff > 0.3 ? 'bg-danger' : ratingDiff < -0.3 ? 'bg-success' : 'bg-warning'} ms-1">
+                                                                ${ratingDiff > 0 ? '+' : ''}${ratingDiff.toFixed(1)}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                `;
+                                            }).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+        
+                        <div class="mt-4">
+                            <button class="btn btn-primary w-100" onclick="showTab('pricing')">
+                                <i class="bi bi-calculator"></i> Перейти к расчету цены
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        
+            // Закрываем другие модальные окна
+            closeAllModals();
+        
+            // Добавляем модальное окно на страницу
+            const modalContainer = document.createElement('div');
+            modalContainer.innerHTML = modalHtml;
+            document.body.appendChild(modalContainer);
+        
+            // Добавляем обработчик закрытия
+            const modalElement = document.getElementById('analysisResultsModal');
+            if (modalElement) {
+                modalElement.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeAnalysisResultsModal();
+                    }
+                });
+            }
+        }
+        
+        // Вспомогательные функции для анализа
+        function getRecommendationLevel(priceDiff, ratingDiff) {
+            if (Math.abs(priceDiff) > 1000 || Math.abs(ratingDiff) > 0.5) {
+                return 'Высокий приоритет';
+            } else if (Math.abs(priceDiff) > 500 || Math.abs(ratingDiff) > 0.3) {
+                return 'Средний приоритет';
+            } else {
+                return 'Низкий приоритет';
+            }
+        }
+        
+        function getActionItems(priceDiff, ratingDiff) {
+            const actions = [];
+            
+            if (priceDiff > 500) {
+                if (ratingDiff > 0.3) {
+                    actions.push('Провести маркетинговую кампанию, подчеркивающую преимущества более высокого рейтинга');
+                    actions.push('Предложить пакетные предложения (завтрак + трансфер)');
+                    actions.push('Ввести программу лояльности для постоянных клиентов');
+                } else {
+                    actions.push('Снизить цену на 5-10% в течение следующей недели');
+                    actions.push('Проанализировать отзывы конкурентов с высоким рейтингом');
+                    actions.push('Предложить временные скидки на бронирование через сайт');
+                }
+            } else if (priceDiff < -500) {
+                if (ratingDiff > 0) {
+                    actions.push('Постепенно повысить цену на 3-5% каждые 2 недели');
+                    actions.push('Усилить маркетинг, акцентируя внимание на качестве сервиса');
+                    actions.push('Предложить премиум-номера по повышенной цене');
+                } else {
+                    actions.push('Проверить соответствие цены и качества услуг');
+                    actions.push('Проанализировать структуру затрат');
+                    actions.push('Рассмотреть возможность улучшения услуг без значительного роста цен');
+                }
+            } else {
+                actions.push('Поддерживать текущий уровень цен');
+                actions.push('Мониторить изменения у конкурентов еженедельно');
+                actions.push('Улучшать качество сервиса для повышения рейтинга');
+            }
+            
+            return actions.map(action => `<li>${action}</li>`).join('');
+        }
+        
+        // Функция закрытия модального окна результатов
+        function closeAnalysisResultsModal() {
+            const modal = document.getElementById('analysisResultsModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        // Функция для закрытия всех модальных окон
+        function closeAllModals() {
+            const modals = document.querySelectorAll('.modal-overlay');
+            modals.forEach(modal => {
+                if (modal.id !== 'addressModal' && 
+                    modal.id !== 'hotelInfoModal' && 
+                    modal.id !== 'addCompetitorModal') {
+                    modal.remove();
+                }
+            });
+        }
+        
+        // Обновляем функцию очистки выбранных, чтобы она закрывала модальное окно анализа
         function clearSelected() {
+            // Закрываем окно результатов анализа, если оно открыто
+            closeAnalysisResultsModal();
+            
             // Сначала обновляем все кнопки
             selectedHotels.forEach(hotelId => {
                 const hotelCard = document.getElementById(`hotel-${hotelId}`);
                 if (hotelCard) {
                     hotelCard.classList.remove('selected');
-                    // Используем нашу новую функцию для обновления UI
                     updateHotelSelectionUI(hotelId, false);
                 }
             });
@@ -4056,8 +4386,6 @@ async def get_report_summary(hotel_id: str, days: int = 7):
     }
 
 
-
-
 @app.post("/api/hotel/update-info")
 async def update_hotel_info(request: HotelInfoUpdateRequest):
     """Обновление информации об отеле (цена, рейтинг, название)"""
@@ -4210,6 +4538,137 @@ async def delete_competitor(request: DeleteCompetitorRequest):
 async def get_all_competitors():
     """Получение всех конкурентов (с нашим отелем)"""
     return COMPETITORS_DATA
+
+
+@app.post("/api/competitors/analyze-selected")
+async def analyze_selected_competitors(request: Dict[str, Any]):
+    """Анализ выбранных конкурентов с расчетом рекомендаций"""
+    try:
+        competitor_ids = request.get("competitor_ids", [])
+        hotel_id = request.get("hotel_id", "our_hotel")
+
+        # Получаем наш отель
+        our_hotel = COMPETITORS_DATA["our_hotel"]
+
+        # Находим выбранных конкурентов
+        selected_competitors = []
+        for competitor in COMPETITORS_DATA["competitors"]:
+            if competitor["id"] in competitor_ids:
+                selected_competitors.append(competitor)
+
+        if not selected_competitors:
+            return {
+                "success": False,
+                "message": "Не выбрано ни одного конкурента"
+            }
+
+        # Рассчитываем средние показатели
+        total_price = sum(c["price"] for c in selected_competitors)
+        total_rating = sum(c["rating"] for c in selected_competitors)
+        avg_price = total_price / len(selected_competitors)
+        avg_rating = total_rating / len(selected_competitors)
+
+        # Рассчитываем разницы
+        price_diff = our_hotel["price"] - avg_price
+        rating_diff = our_hotel["rating"] - avg_rating
+
+        # Определяем рекомендации
+        recommendations = []
+        priority = "low"
+
+        if price_diff > 500:
+            if rating_diff > 0.3:
+                recommendations.append({
+                    "type": "info",
+                    "text": "Ваш отель значительно дороже, но имеет более высокий рейтинг",
+                    "actions": [
+                        "Предложить пакетные услуги для обоснования цены",
+                        "Усилить маркетинг, подчеркивающий качество сервиса"
+                    ]
+                })
+            else:
+                recommendations.append({
+                    "type": "danger",
+                    "text": "Ваш отель значительно дороже конкурентов",
+                    "actions": [
+                        "Снизить цену на 5-15%",
+                        "Проанализировать отзывы конкурентов с высоким рейтингом"
+                    ]
+                })
+                priority = "high"
+        elif price_diff < -500:
+            if rating_diff > 0:
+                recommendations.append({
+                    "type": "success",
+                    "text": "Ваш отель дешевле и имеет более высокий рейтинг",
+                    "actions": [
+                        "Можно повысить цену на 5-10%",
+                        "Увеличить маркетинговые активности"
+                    ]
+                })
+                priority = "medium"
+            else:
+                recommendations.append({
+                    "type": "warning",
+                    "text": "Ваш отель дешевле конкурентов",
+                    "actions": [
+                        "Постепенно повышать цену",
+                        "Добавить дополнительные услуги"
+                    ]
+                })
+        else:
+            if rating_diff > 0.3:
+                recommendations.append({
+                    "type": "success",
+                    "text": "Цены сопоставимы, ваш рейтинг выше",
+                    "actions": [
+                        "Использовать преимущество в маркетинге",
+                        "Рассмотреть повышение цены на 3-5%"
+                    ]
+                })
+            elif rating_diff < -0.3:
+                recommendations.append({
+                    "type": "warning",
+                    "text": "Цены сопоставимы, но рейтинг конкурентов выше",
+                    "actions": [
+                        "Проанализировать отзывы гостей",
+                        "Улучшить качество сервиса"
+                    ]
+                })
+                priority = "medium"
+            else:
+                recommendations.append({
+                    "type": "info",
+                    "text": "Ваша позиция на рынке оптимальна",
+                    "actions": [
+                        "Поддерживать текущую стратегию",
+                        "Продолжать мониторинг конкурентов"
+                    ]
+                })
+
+        return {
+            "success": True,
+            "analysis": {
+                "selected_count": len(selected_competitors),
+                "average_price": round(avg_price, 2),
+                "average_rating": round(avg_rating, 2),
+                "our_hotel": {
+                    "price": our_hotel["price"],
+                    "rating": our_hotel["rating"]
+                },
+                "differences": {
+                    "price": round(price_diff, 2),
+                    "rating": round(rating_diff, 2)
+                },
+                "recommendations": recommendations,
+                "priority": priority,
+                "competitors": selected_competitors
+            },
+            "analyzed_at": datetime.now().isoformat()
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
