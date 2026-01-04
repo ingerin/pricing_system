@@ -2330,14 +2330,14 @@ DASHBOARD_HTML = """
                     map.removeLayer(markers[key]);
                 }
             });
-
+        
             // Удаляем только маркеры конкурентов из объекта markers
             Object.keys(markers).forEach(key => {
                 if (key !== 'our_hotel') {
                     delete markers[key];
                 }
             });
-
+        
             // Очищаем выбранные отели конкурентов, которые не прошли фильтрацию
             selectedHotels.forEach(hotelId => {
                 if (hotelId !== 'our_hotel' && !filteredCompetitors.some(hotel => hotel.id === hotelId)) {
@@ -2350,6 +2350,7 @@ DASHBOARD_HTML = """
 
             // Добавляем отфильтрованных конкурентов
             filteredCompetitors.forEach(hotel => {
+                // ПЕРЕСОЗДАЕМ маркер с актуальным состоянием выбора
                 addCompetitorMarker(hotel);
             });
 
@@ -2437,7 +2438,7 @@ DASHBOARD_HTML = """
 
             // Проверяем, выбран ли отель
             const isSelected = selectedHotels.has(hotel.id);
-        
+
             const icon = L.divIcon({
                 className: 'custom-icon',
                 html: `
@@ -2462,7 +2463,39 @@ DASHBOARD_HTML = """
                 iconSize: [35, 35]
             });
 
-            const popupContent = `
+            // Используем функцию createPopupContent для создания содержимого попапа
+            const popupContent = createPopupContent(hotel, isSelected);
+            
+            const marker = L.marker([hotel.lat, hotel.lng], { icon: icon })
+                .addTo(map)
+                .on('click', function() {
+                    showHotelInfoModal(hotel);
+                })
+                .bindPopup(popupContent);
+            
+            markers[hotel.id] = marker;
+        }
+        
+        // Функция создания содержимого попапа
+        function createPopupContent(hotel, isSelected) {
+            if (!ourHotelData) return '';
+            
+            const priceDiff = hotel.price - ourHotelData.price;
+            let priceClass = '';
+            let priceText = '';
+            
+            if (priceDiff > 500) {
+                priceClass = 'price-higher';
+                priceText = `+${priceDiff} ₽`;
+            } else if (priceDiff < -500) {
+                priceClass = 'price-lower';
+                priceText = `${priceDiff} ₽`;
+            } else {
+                priceClass = 'price-same';
+                priceText = '≈';
+            }
+            
+            return `
                 <div style="min-width: 200px;">
                     <h6><b>${hotel.name}</b></h6>
                     <p><i class="bi bi-geo-alt"></i> ${hotel.address}</p>
@@ -2483,15 +2516,6 @@ DASHBOARD_HTML = """
                     </div>
                 </div>
             `;
-        
-            const marker = L.marker([hotel.lat, hotel.lng], { icon: icon })
-                .addTo(map)
-                .on('click', function() {
-                    showHotelInfoModal(hotel);
-                })
-                .bindPopup(popupContent);
-        
-            markers[hotel.id] = marker;
         }
 
         // Выбрать/убрать отель
@@ -2524,14 +2548,18 @@ DASHBOARD_HTML = """
             // Обновляем список выбранных
             updateSelectedList();
             
-            // Если попап был открыт, оставляем его открытым
-            if (wasPopupOpen && marker) {
-                // Немного задержим обновление попапа, чтобы он успел обновиться
-                setTimeout(() => {
-                    if (marker._popup) {
-                        marker.openPopup();
-                    }
-                }, 50);
+            // ОБНОВЛЯЕМ ВСЕГДА содержимое попапа, даже если он не открыт
+            if (marker) {
+                updateMapPopupContent(hotelId);
+                
+                // Если попап был открыт, открываем его заново с обновленным содержимым
+                if (wasPopupOpen) {
+                    setTimeout(() => {
+                        if (marker._popup) {
+                            marker.openPopup();
+                        }
+                    }, 50);
+                }
             }
         }
         
@@ -2568,10 +2596,8 @@ DASHBOARD_HTML = """
                     }
                 }
                 
-                // Обновляем попап если он открыт (но не закрываем его!)
-                if (marker._popup && marker._popup.isOpen()) {
-                    updateMapPopupContent(hotelId);
-                }
+                // ОБНОВЛЯЕМ ВСЕГДА содержимое попапа (даже если он не открыт)
+                updateMapPopupContent(hotelId);
             }
         
             // 3. Обновляем модальное окно с деталями если оно открыто
@@ -2607,50 +2633,12 @@ DASHBOARD_HTML = """
             if (!hotel || !ourHotelData) return;
             
             const isSelected = selectedHotels.has(hotelId);
-            const priceDiff = hotel.price - ourHotelData.price;
             
-            let priceClass = '';
-            let priceText = '';
-            
-            if (priceDiff > 500) {
-                priceClass = 'price-higher';
-                priceText = `+${priceDiff} ₽`;
-            } else if (priceDiff < -500) {
-                priceClass = 'price-lower';
-                priceText = `${priceDiff} ₽`;
-            } else {
-                priceClass = 'price-same';
-                priceText = '≈';
-            }
-            
-            const popupContent = `
-                <div style="min-width: 200px;">
-                    <h6><b>${hotel.name}</b></h6>
-                    <p><i class="bi bi-geo-alt"></i> ${hotel.address}</p>
-                    <p><i class="bi bi-signpost"></i> ${hotel.distance} от нас</p>
-                    <p><i class="bi bi-cash"></i> <b>${hotel.price.toLocaleString('ru-RU')} ₽</b></p>
-                    <p><i class="bi bi-star"></i> ${hotel.rating} ★</p>
-                    <p>Разница: <span class="badge ${priceClass}">${priceText}</span></p>
-                    <div class="d-flex gap-2 mt-2">
-                        <button class="btn btn-sm ${isSelected ? 'btn-outline-primary' : 'btn-primary'} w-50" 
-                                onclick="selectHotel('${hotel.id}', event)">
-                            <i class="bi ${isSelected ? 'bi-dash-circle' : 'bi-plus-circle'}"></i> 
-                            ${isSelected ? 'Убрать' : 'Выбрать'}
-                        </button>
-                        <button class="btn btn-sm btn-outline-info w-50" 
-                                onclick="showHotelInfoModalFromPopup('${hotel.id}')">
-                            <i class="bi bi-info-circle"></i> Подробнее
-                        </button>
-                    </div>
-                </div>
-            `;
+            // Используем общую функцию для создания содержимого
+            const popupContent = createPopupContent(hotel, isSelected);
             
             // Обновляем содержимое попапа
-            if (marker._popup && marker._popup.isOpen()) {
-                marker.setPopupContent(popupContent);
-            } else {
-                marker.bindPopup(popupContent);
-            }
+            marker.bindPopup(popupContent);
         }
         
         // Функция для обновления текста кнопки в карточке отеля
@@ -3623,7 +3611,7 @@ DASHBOARD_HTML = """
             }
 
             if (hotel) {
-                // Закрываем попап
+                // Закрываем попап перед открытием модального окна
                 if (markers[hotelId]) {
                     markers[hotelId].closePopup();
                 }
@@ -3631,8 +3619,34 @@ DASHBOARD_HTML = """
                 // Показываем модальное окно
                 showHotelInfoModal(hotel);
             }
+            
+             setTimeout(() => {
+                refreshAllMapMarkers();
+            }, 100);
         }
-
+        
+        // Принудительно обновить все маркеры на карте
+        function refreshAllMapMarkers() {
+            if (!map) return;
+            
+            // Сохраняем текущее состояние выбранных отелей
+            const currentSelectedHotels = new Set(selectedHotels);
+            
+            // Пересоздаем все маркеры конкурентов
+            allCompetitorsData.forEach(hotel => {
+                if (markers[hotel.id]) {
+                    map.removeLayer(markers[hotel.id]);
+                    delete markers[hotel.id];
+                }
+                addCompetitorMarker(hotel);
+            });
+            
+            // Восстанавливаем состояние выбранных отелей в UI
+            currentSelectedHotels.forEach(hotelId => {
+                updateHotelSelectionUI(hotelId, true);
+            });
+        }
+        
         // Функция сравнения с нашим отелем
         function compareWithOurHotel(competitorId) {
             const competitor = allCompetitorsData.find(h => h.id === competitorId);
