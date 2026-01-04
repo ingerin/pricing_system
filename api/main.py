@@ -430,7 +430,13 @@ DASHBOARD_HTML = """
             border-color: #4361ee;
             background-color: rgba(67, 97, 238, 0.05);
         }
-
+        
+        .selected-marker {
+            border-color: #4361ee !important;
+            border-width: 3px !important;
+            box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.3) !important;
+        }
+        
         /* Стиль для нашего отеля в списке */
         .hotel-card.our-hotel {
             border: 2px solid #4361ee;
@@ -2398,23 +2404,30 @@ DASHBOARD_HTML = """
                 console.warn('ourHotelData не инициализирована в addCompetitorMarker');
                 return;
             }
-            // Используем ourHotelData.price вместо глобальной переменной ourHotelPrice
+            
             const priceDiff = hotel.price - ourHotelData.price;
             let priceClass = '';
+            let priceText = '';
             let markerColor = '';
 
-            // Определяем цвет маркера в зависимости от разницы цен
+            // Определяем цвет маркера и текст разницы цен
             if (priceDiff > 500) {
                 priceClass = 'price-higher';
+                priceText = `+${priceDiff} ₽`;
                 markerColor = '#ef476f'; // Красный для дороже
             } else if (priceDiff < -500) {
                 priceClass = 'price-lower';
+                priceText = `${priceDiff} ₽`;
                 markerColor = '#06d6a0'; // Зеленый для дешевле
             } else {
                 priceClass = 'price-same';
+                priceText = '≈';
                 markerColor = '#ffd166'; // Желтый для примерно одинаково
             }
 
+            // Проверяем, выбран ли отель
+            const isSelected = selectedHotels.has(hotel.id);
+        
             const icon = L.divIcon({
                 className: 'custom-icon',
                 html: `
@@ -2431,6 +2444,7 @@ DASHBOARD_HTML = """
                         color: white;
                         cursor: pointer;
                         transition: all 0.3s;
+                        ${isSelected ? 'border-color: #4361ee; border-width: 3px;' : ''}
                     " onclick="showHotelInfo('${hotel.id}', event)">
                         <i class="bi bi-building"></i>
                     </div>
@@ -2438,30 +2452,35 @@ DASHBOARD_HTML = """
                 iconSize: [35, 35]
             });
 
+            const popupContent = `
+                <div style="min-width: 200px;">
+                    <h6><b>${hotel.name}</b></h6>
+                    <p><i class="bi bi-geo-alt"></i> ${hotel.address}</p>
+                    <p><i class="bi bi-signpost"></i> ${hotel.distance} от нас</p>
+                    <p><i class="bi bi-cash"></i> <b>${hotel.price.toLocaleString('ru-RU')} ₽</b></p>
+                    <p><i class="bi bi-star"></i> ${hotel.rating} ★</p>
+                    <p>Разница: <span class="badge ${priceClass}">${priceText}</span></p>
+                    <div class="d-flex gap-2 mt-2">
+                        <button class="btn btn-sm ${isSelected ? 'btn-outline-primary' : 'btn-primary'} w-50" 
+                                onclick="selectHotel('${hotel.id}', event)">
+                            <i class="bi ${isSelected ? 'bi-check-circle' : 'bi-plus-circle'}"></i> 
+                            ${isSelected ? 'Убрать' : 'Выбрать'}
+                        </button>
+                        <button class="btn btn-sm btn-outline-info w-50" 
+                                onclick="showHotelInfoModalFromPopup('${hotel.id}')">
+                            <i class="bi bi-info-circle"></i> Подробнее
+                        </button>
+                    </div>
+                </div>
+            `;
+        
             const marker = L.marker([hotel.lat, hotel.lng], { icon: icon })
                 .addTo(map)
                 .on('click', function() {
                     showHotelInfoModal(hotel);
                 })
-                .bindPopup(`
-                    <div style="min-width: 200px;">
-                        <h6><b>${hotel.name}</b></h6>
-                        <p><i class="bi bi-geo-alt"></i> ${hotel.address}</p>
-                        <p><i class="bi bi-signpost"></i> ${hotel.distance} от нас</p>
-                        <p><i class="bi bi-cash"></i> <b>${hotel.price.toLocaleString('ru-RU')} ₽</b></p>
-                        <p><i class="bi bi-star"></i> ${hotel.rating} ★</p>
-                        <p>Разница: <span class="badge ${priceClass}">${priceDiff > 0 ? '+' : ''}${priceDiff} ₽</span></p>
-                        <div class="d-flex gap-2 mt-2">
-                            <button class="btn btn-sm btn-primary w-50" onclick="selectHotel('${hotel.id}')">
-                                <i class="bi bi-plus-circle"></i> Выбрать
-                            </button>
-                            <button class="btn btn-sm btn-outline-info w-50" onclick="showHotelInfoModalFromPopup('${hotel.id}')">
-                                <i class="bi bi-info-circle"></i> Подробнее
-                            </button>
-                        </div>
-                    </div>
-                `);
-
+                .bindPopup(popupContent);
+        
             markers[hotel.id] = marker;
         }
 
@@ -2470,22 +2489,107 @@ DASHBOARD_HTML = """
             if (event) event.stopPropagation();
 
             const hotelCard = document.getElementById(`hotel-${hotelId}`);
-
+            const isOurHotel = hotelId === 'our_hotel';
+        
             // Проверяем, можем ли выбрать наш отель (опционально)
-            if (hotelId === 'our_hotel') {
+            if (isOurHotel) {
                 alert('Это наш отель. Вы не можете выбрать его для анализа.');
                 return;
             }
 
-            if (selectedHotels.has(hotelId)) {
+            const wasSelected = selectedHotels.has(hotelId);
+            
+            if (wasSelected) {
                 selectedHotels.delete(hotelId);
-                if (hotelCard) hotelCard.classList.remove('selected');
+                if (hotelCard) {
+                    hotelCard.classList.remove('selected');
+                    // Обновляем текст кнопки в карточке
+                    updateSelectButton(hotelCard, false);
+                }
+                // Закрываем попап если открыт
+                if (markers[hotelId]) {
+                    markers[hotelId].closePopup();
+                }
             } else {
                 selectedHotels.add(hotelId);
-                if (hotelCard) hotelCard.classList.add('selected');
+                if (hotelCard) {
+                    hotelCard.classList.add('selected');
+                    // Обновляем текст кнопки в карточке
+                    updateSelectButton(hotelCard, true);
+                }
+                // Открываем попап для подтверждения выбора
+                if (markers[hotelId]) {
+                    setTimeout(() => markers[hotelId].openPopup(), 300);
+                }
             }
-
+        
+            // Также обновляем текст кнопки в попапе на карте
+            updateMapPopupButton(hotelId, !wasSelected);
+            
             updateSelectedList();
+        }
+        
+        // Функция для обновления текста кнопки в карточке отеля
+        function updateSelectButton(hotelCard, isSelected) {
+            const button = hotelCard.querySelector('.btn-outline-success');
+            if (button) {
+                button.innerHTML = `<i class="bi ${isSelected ? 'bi-check-circle' : 'bi-plus-circle'}"></i> ${isSelected ? 'Убрать' : 'Выбрать'}`;
+                button.classList.toggle('btn-outline-primary', isSelected);
+                button.classList.toggle('btn-outline-success', !isSelected);
+            }
+        }
+        
+        // Функция для обновления текста кнопки в попапе на карте
+        function updateMapPopupButton(hotelId, isSelected) {
+            // Обновляем все открытые попапы с этим отелем
+            const popup = markers[hotelId]?._popup;
+            if (popup && popup.isOpen()) {
+                // Закрываем и открываем заново с обновленным содержимым
+                markers[hotelId].closePopup();
+                
+                // Создаем новое содержимое попапа
+                const hotel = allCompetitorsData.find(h => h.id === hotelId);
+                if (!hotel || !ourHotelData) return;
+                
+                const priceDiff = hotel.price - ourHotelData.price;
+                let priceClass = '';
+                let priceText = '';
+        
+                if (priceDiff > 500) {
+                    priceClass = 'price-higher';
+                    priceText = `+${priceDiff} ₽`;
+                } else if (priceDiff < -500) {
+                    priceClass = 'price-lower';
+                    priceText = `${priceDiff} ₽`;
+                } else {
+                    priceClass = 'price-same';
+                    priceText = '≈';
+                }
+        
+                const popupContent = `
+                    <div style="min-width: 200px;">
+                        <h6><b>${hotel.name}</b></h6>
+                        <p><i class="bi bi-geo-alt"></i> ${hotel.address}</p>
+                        <p><i class="bi bi-signpost"></i> ${hotel.distance} от нас</p>
+                        <p><i class="bi bi-cash"></i> <b>${hotel.price.toLocaleString('ru-RU')} ₽</b></p>
+                        <p><i class="bi bi-star"></i> ${hotel.rating} ★</p>
+                        <p>Разница: <span class="badge ${priceClass}">${priceText}</span></p>
+                        <div class="d-flex gap-2 mt-2">
+                            <button class="btn btn-sm ${isSelected ? 'btn-outline-primary' : 'btn-primary'} w-50" 
+                                    onclick="selectHotel('${hotelId}', event)">
+                                <i class="bi ${isSelected ? 'bi-check-circle' : 'bi-plus-circle'}"></i> 
+                                ${isSelected ? 'Убрать' : 'Выбрать'}
+                            </button>
+                            <button class="btn btn-sm btn-outline-info w-50" 
+                                    onclick="showHotelInfoModalFromPopup('${hotelId}')">
+                                <i class="bi bi-info-circle"></i> Подробнее
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                markers[hotelId].bindPopup(popupContent).openPopup();
+            }
         }
 
         // Обновить список выбранных
@@ -2504,18 +2608,8 @@ DASHBOARD_HTML = """
 
             list.innerHTML = '';
             selectedHotels.forEach(hotelId => {
-                // В реальном приложении здесь был бы запрос к API
-                const hotel = {
-                    id: hotelId,
-                    name: hotelId === 'hotel1' ? 'Luxury Hotel Moscow' : 
-                          hotelId === 'hotel2' ? 'Business Inn' :
-                          hotelId === 'hotel3' ? 'City Center Hotel' :
-                          hotelId === 'hotel4' ? 'Comfort Stay' : 'Premium Suites',
-                    price: hotelId === 'hotel1' ? 6200 : 
-                          hotelId === 'hotel2' ? 4800 :
-                          hotelId === 'hotel3' ? 5500 :
-                          hotelId === 'hotel4' ? 5200 : 7500
-                };
+                const hotel = allCompetitorsData.find(h => h.id === hotelId);
+                if (!hotel) return;
 
                 const item = document.createElement('div');
                 item.className = 'selected-item';
@@ -2525,9 +2619,14 @@ DASHBOARD_HTML = """
                             <h6 class="mb-1">${hotel.name}</h6>
                             <small class="text-muted">${hotel.price.toLocaleString('ru-RU')} ₽</small>
                         </div>
-                        <button class="btn btn-sm btn-outline-danger" onclick="selectHotel('${hotelId}')">
-                            <i class="bi bi-x"></i>
-                        </button>
+                        <div>
+                            <button class="btn btn-sm btn-outline-primary me-2" onclick="focusOnMap('${hotelId}', event)">
+                                <i class="bi bi-map"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="selectHotel('${hotelId}', event)">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </div>
                     </div>
                 `;
                 list.appendChild(item);
@@ -2546,10 +2645,17 @@ DASHBOARD_HTML = """
 
         // Очистить выбор
         function clearSelected() {
+            // Сначала обновляем все кнопки
             selectedHotels.forEach(hotelId => {
                 const hotelCard = document.getElementById(`hotel-${hotelId}`);
-                if (hotelCard) hotelCard.classList.remove('selected');
+                if (hotelCard) {
+                    hotelCard.classList.remove('selected');
+                    updateSelectButton(hotelCard, false);
+                }
+                updateMapPopupButton(hotelId, false);
             });
+            
+            // Затем очищаем Set
             selectedHotels.clear();
             updateSelectedList();
         }
@@ -2607,7 +2713,30 @@ DASHBOARD_HTML = """
                 }
             }
         }
-
+        
+        // Обновить все кнопки выбора
+        function updateAllSelectButtons() {
+            // Обновляем кнопки в списке отелей
+            selectedHotels.forEach(hotelId => {
+                const hotelCard = document.getElementById(`hotel-${hotelId}`);
+                if (hotelCard) {
+                    updateSelectButton(hotelCard, true);
+                }
+                // Обновляем попапы на карте
+                updateMapPopupButton(hotelId, true);
+            });
+            
+            // Для невыбранных отелей тоже обновляем (на всякий случай)
+            allCompetitorsData.forEach(hotel => {
+                if (!selectedHotels.has(hotel.id)) {
+                    const hotelCard = document.getElementById(`hotel-${hotel.id}`);
+                    if (hotelCard) {
+                        updateSelectButton(hotelCard, false);
+                    }
+                }
+            });
+        }
+        
         // Функция для перерисовки всех маркеров конкурентов
         function redrawAllCompetitorMarkers(competitors) {
             if (!map) {
